@@ -265,11 +265,10 @@ io.on("connection", (socket) => {
 	// user join //
 	///////////////
 
-	socket.on("join", (p_username) => {
+	socket.on("join", (p_username, p_password) => {
 		if (userLoggedIn) return;
 
-    
-
+		console.log("join: %s, %s", p_username, p_password);
 		username = p_username;
 		userLoggedIn = true;
 		socketmap[username] = socket;
