@@ -1,14 +1,17 @@
-
 # Insecure Chat Server
 
 A simple insecure chat server
 
 ## How to use
 
-```
+```bash
 $ cd insecure-chat-server
 $ npm install
 $ npm start
+
+> insecure-chat-client@1.0.0 start
+> electron .
+
 ```
 
 The server is now available at `ws://localhost:3000`. Optionally, specify a port by supplying the `PORT` env variable.
