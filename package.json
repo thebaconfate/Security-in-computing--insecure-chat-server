@@ -3,12 +3,13 @@
   "version": "1.0.0",
   "description": "A simple insecure chat server",
   "main": "index.js",
-  "author": "Jim Bauwens",
+  "author": "Jim Bauwens, Gérard Lichtert",
   "private": true,
   "license": "MIT",
   "dependencies": {
     "express": "^4.19.2",
-    "socket.io": "^4.7.5"
+    "socket.io": "^4.7.5",
+    "sqlite3": "^5.1.7"
   },
   "scripts": {
     "start": "node index.js"
