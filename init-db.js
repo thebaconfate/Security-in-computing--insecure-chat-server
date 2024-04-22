@@ -1,3 +1,8 @@
+/* 
+This file is only to be used for initializing the database
+! NOTE: Normally I'd use a hosted database like MySQL or PostgreSQL, but for the sake of simplicity I'm using SQLite
+ */
+
 const sqlite = require("sqlite3").verbose();
 const db = new sqlite.Database("./database.db", (err) => {
 	if (err) {
