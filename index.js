@@ -268,6 +268,8 @@ io.on("connection", (socket) => {
 	socket.on("join", (p_username) => {
 		if (userLoggedIn) return;
 
+    
+
 		username = p_username;
 		userLoggedIn = true;
 		socketmap[username] = socket;
