@@ -5,14 +5,7 @@ const path = require("path");
 const server = require("http").createServer(app);
 const io = require("socket.io")(server);
 const port = process.env.PORT || 3000;
-const sqlite = require("sqlite3").verbose();
-const db = new sqlite.Database("./database.db", (err) => {
-	if (err) {
-		console.error("Error opening database:", err.message);
-	} else {
-		console.log("Connected to the database.");
-	}
-});
+const database = new require("./database.js")();
 
 const Rooms = require("./rooms.js");
 const Users = require("./users.js");
@@ -271,15 +264,11 @@ io.on("connection", (socket) => {
 	// user join //
 	///////////////
 
-	socket.on("join", (authenticationData) => {
+	socket.on("authenticate", (credentials) => {
 		if (userLoggedIn) return;
 
-		console.log(
-			"join: %s, %s",
-			authenticationData.username,
-			authenticationData.password
-		);
-		username = authenticationData.username;
+		console.log("join: %s, %s", credentials.username, credentials.password);
+		username = credentials.username;
 		userLoggedIn = true;
 		socketmap[username] = socket;
 
