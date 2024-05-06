@@ -271,11 +271,15 @@ io.on("connection", (socket) => {
 	// user join //
 	///////////////
 
-	socket.on("join", (p_username, p_password) => {
+	socket.on("join", (authenticationData) => {
 		if (userLoggedIn) return;
 
-		console.log("join: %s, %s", p_username, p_password);
-		username = p_username;
+		console.log(
+			"join: %s, %s",
+			authenticationData.username,
+			authenticationData.password
+		);
+		username = authenticationData.username;
 		userLoggedIn = true;
 		socketmap[username] = socket;
 
