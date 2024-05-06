@@ -150,6 +150,7 @@ io.on("connection", (socket) => {
 	///////////////////////
 
 	socket.on("new message", (msg) => {
+		console.log("new message", msg);
 		if (userLoggedIn) {
 			console.log(msg);
 			addMessageToRoom(msg.room, username, msg);
@@ -161,6 +162,7 @@ io.on("connection", (socket) => {
 	/////////////////////////////
 
 	socket.on("request_direct_room", (req) => {
+		console.log("request_direct_room", req);
 		if (userLoggedIn) {
 			const user_a = Users.getUser(req.to);
 			const user_b = Users.getUser(username);
@@ -180,6 +182,7 @@ io.on("connection", (socket) => {
 	});
 
 	socket.on("add_channel", (req) => {
+		console.log("add_channel", req);
 		if (userLoggedIn) {
 			const user = Users.getUser(username);
 			console.log(req);
@@ -204,6 +207,7 @@ io.on("connection", (socket) => {
 	});
 
 	socket.on("join_channel", (req) => {
+		console.log("join_channel", req);
 		if (userLoggedIn) {
 			const user = Users.getUser(username);
 			const room = Rooms.getRoom(req.id);
@@ -223,6 +227,7 @@ io.on("connection", (socket) => {
 	});
 
 	socket.on("add_user_to_channel", (req) => {
+		console.log("add_user_to_channel", req);
 		if (userLoggedIn) {
 			const user = Users.getUser(req.user);
 			const room = Rooms.getRoom(req.channel);
@@ -244,6 +249,7 @@ io.on("connection", (socket) => {
 	});
 
 	socket.on("leave_channel", (req) => {
+		console.log("leave_channel", req);
 		if (userLoggedIn) {
 			const user = Users.getUser(username);
 			const room = Rooms.getRoom(req.id);
@@ -301,6 +307,7 @@ io.on("connection", (socket) => {
 	////////////////
 
 	socket.on("reconnect", () => {
+		console.log("reconnect");
 		if (userLoggedIn) setUserActiveState(socket, username, true);
 	});
 
@@ -309,6 +316,7 @@ io.on("connection", (socket) => {
 	/////////////////
 
 	socket.on("disconnect", () => {
+		console.log("disconnect");
 		if (userLoggedIn) setUserActiveState(socket, username, false);
 	});
 });
