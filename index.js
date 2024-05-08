@@ -5,10 +5,10 @@ const path = require("path");
 const server = require("http").createServer(app);
 const io = require("socket.io")(server);
 const port = process.env.PORT || 3000;
-const database = new require("./database.js")();
-
+const database = require("./database.js");
 const Rooms = require("./rooms.js");
 const Users = require("./users.js");
+const Auth = require("./auth.js");
 
 // Load application config/state
 require("./basicstate.js").setup(Users, Rooms);
@@ -259,10 +259,35 @@ io.on("connection", (socket) => {
 			}
 		}
 	});
+	///////////////////////
+	// user registration //
+	///////////////////////
 
-	///////////////
-	// user join //
-	///////////////
+	socket.on("register", (credentials, callback) => {
+		console.log("received user registration request");
+		if (!credentials.username || !credentials.password) {
+			callback({ success: false, reason: "Invalid username or password" });
+		} else {
+			const auth = new Auth(database);
+			auth.registerUser(
+				credentials.username,
+				credentials.password,
+				function (err) {
+					if (err) {
+						console.log("Failed registration", err.code);
+						callback({ success: false, reason: "User already exists" });
+					} else {
+						console.log("Successful registration");
+						callback({ success: true });
+					}
+				}
+			);
+		}
+	});
+
+	/////////////////////////
+	// user authentication //
+	/////////////////////////
 
 	socket.on("authenticate", (credentials) => {
 		if (userLoggedIn) return;
