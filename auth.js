@@ -14,9 +14,12 @@ class Auth {
 	authenticateUser(username, password) {
 		const user = this.#database.getUser(username);
 		if (user) {
+			console.log("user exists", user);
 			return this.#bcrypt.authenticatePassword(password, user.password);
+		} else {
+			console.log("user does not exist");
+			return false;
 		}
-		return false;
 	}
 }
 

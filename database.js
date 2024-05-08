@@ -19,14 +19,11 @@ class Database {
 		query.finalize();
 	}
 
-	getUser(username) {
+	getUser(username, callback) {
 		const query = this.#db.prepare("SELECT * FROM users WHERE username = ?");
-		return new Promise((resolve, reject) => {
-			query.get(username, (err, row) => {
-				if (err) reject(err);
-				else resolve(row);
-			});
-		});
+		const user = query.get([username], callback);
+		console.log("getUser", user);
+		query.finalize();
 	}
 }
 

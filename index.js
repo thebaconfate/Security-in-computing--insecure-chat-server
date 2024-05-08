@@ -289,10 +289,18 @@ io.on("connection", (socket) => {
 	// user authentication //
 	/////////////////////////
 
-	socket.on("authenticate", (credentials) => {
+	socket.on("authenticate", (credentials, callback) => {
 		if (userLoggedIn) return;
 
-		console.log("join: %s, %s", credentials.username, credentials.password);
+		console.log("authenticating", credentials.username, credentials.password);
+		const auth = new Auth(database);
+		const RegisteredUser = auth.authenticateUser(
+			credentials.username,
+			credentials.password
+		);
+		console.log("RegisteredUser", RegisteredUser);
+		if (!RegisteredUser)
+			callback({ success: false, reason: "Invalid username or password" });
 		username = credentials.username;
 		userLoggedIn = true;
 		socketmap[username] = socket;
