@@ -294,13 +294,16 @@ io.on("connection", (socket) => {
 
 		console.log("authenticating", credentials.username, credentials.password);
 		const auth = new Auth(database);
-		const RegisteredUser = auth.authenticateUser(
+		auth.authenticateUser(
 			credentials.username,
-			credentials.password
+			credentials.password,
+			(user) => {
+				callback({ success: true });
+			},
+			() => {
+				callback({ success: false, reason: "Invalid username or password" });
+			}
 		);
-		console.log("RegisteredUser", RegisteredUser);
-		if (!RegisteredUser)
-			callback({ success: false, reason: "Invalid username or password" });
 		username = credentials.username;
 		userLoggedIn = true;
 		socketmap[username] = socket;

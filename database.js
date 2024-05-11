@@ -21,12 +21,9 @@ class Database {
 
 	getUser(username, callback) {
 		const query = this.#db.prepare("SELECT * FROM users WHERE username = ?");
-		const user = query.get([username], callback);
-		console.log("getUser", user);
+		query.get([username], callback);
 		query.finalize();
 	}
 }
 
-const database = new Database();
-
-module.exports = database;
+module.exports = Database;
