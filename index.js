@@ -6,7 +6,8 @@ const path = require("path");
 const server = require("http").createServer(app);
 const io = require("socket.io")(server);
 const port = process.env.PORT || 3000;
-const database = require("./database.js");
+const Database = require("./database.js");
+const database = new Database();
 const Rooms = require("./rooms.js");
 const Users = require("./users.js");
 const Auth = require("./auth.js");
@@ -292,21 +293,28 @@ io.on("connection", (socket) => {
 
 	socket.on("authenticate", (credentials, callback) => {
 		if (userLoggedIn) return;
-
 		console.log("authenticating", credentials.username, credentials.password);
+		const failCallback = () => {
+			callback({ success: false, reason: "Invalid username or password" });
+		};
 		const auth = new Auth(database);
 		auth.authenticateUser(
 			credentials.username,
 			credentials.password,
 			(user) => {
-				callback({
-					success: true,
-					token: auth.generateJWT(user.ID, user.username),
-				});
+				auth.generateJWT(
+					user.ID,
+					user.username,
+					(token) => {
+						callback({
+							success: true,
+							token: token,
+						});
+					},
+					failCallback
+				);
 			},
-			() => {
-				callback({ success: false, reason: "Invalid username or password" });
-			}
+			failCallback
 		);
 		username = credentials.username;
 		userLoggedIn = true;

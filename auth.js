@@ -18,6 +18,7 @@ class Auth {
 	}
 
 	authenticateUser(username, password, successCallback, failCallback) {
+		console.log(this.#database);
 		this.#database.getUser(
 			username,
 			function (err, row) {
