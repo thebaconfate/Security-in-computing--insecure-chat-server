@@ -10,7 +10,7 @@ class User {
 		this.#database = database;
 	}
 
-	// TODO: WIP
+	// TODO: WIP - collect room subscriptions n stuff
 	getUserData(continuation) {
 		return {
 			ID: this.ID,
