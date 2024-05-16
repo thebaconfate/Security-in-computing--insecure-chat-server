@@ -1,4 +1,5 @@
 // Setup basic express server
+require("dotenv").config();
 const express = require("express");
 const app = express();
 const path = require("path");
@@ -298,7 +299,10 @@ io.on("connection", (socket) => {
 			credentials.username,
 			credentials.password,
 			(user) => {
-				callback({ success: true });
+				callback({
+					success: true,
+					token: auth.generateJWT(user.ID, user.username),
+				});
 			},
 			() => {
 				callback({ success: false, reason: "Invalid username or password" });
