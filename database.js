@@ -24,6 +24,46 @@ class Database {
 		query.get([username], callback);
 		query.finalize();
 	}
+
+	getUsers(usernames, callback) {
+		const query = this.#db.prepare("SELECT * FROM users WHERE username IN (?)");
+		query.all([usernames], callback);
+		query.finalize();
+	}
+
+	getUserById(id, callback) {
+		const query = this.#db.prepare("SELECT * FROM users WHERE ID = ?");
+		query.get([id], callback);
+		query.finalize();
+	}
+
+	createChatroom(name, description, isPrivate, callback) {
+		const query = this.#db.prepare(
+			"INSERT INTO chatrooms (name, description, private) VALUES (?, ?, ?)"
+		);
+		query.run([name, description, isPrivate], callback);
+		query.finalize();
+	}
+
+	getChatroomByName(name, callback) {
+		const query = this.#db.prepare("SELECT * FROM chatrooms WHERE name = ?");
+		query.get([name], callback);
+		query.finalize();
+	}
+
+	getChatroomById(id, callback) {
+		const query = this.#db.prepare("SELECT * FROM chatrooms WHERE ID = ?");
+		query.get([id], callback);
+		query.finalize();
+	}
+
+	registerMemberToChatroom(userId, chatroomId, callback) {
+		const query = this.#db.prepare(
+			"INSERT INTO chatroom_members (user_id, chatroom_id) VALUES (?, ?)"
+		);
+		query.run([userId, chatroomId], callback);
+		query.finalize();
+	}
 }
 
 module.exports = Database;
