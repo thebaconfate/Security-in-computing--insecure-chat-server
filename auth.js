@@ -1,19 +1,23 @@
-const Bcrypt = require("./crypto.js");
+const bcrypt = require("bcrypt");
 const Database = require("./database.js");
+const jwt = require("jsonwebtoken");
+const SECRET_KEY = process.env.SECRET_KEY || "Not-so-secret-secret-key";
+const TOKEN_EXPIRATION_TIME = process.env.TOKEN_EXPIRATION_TIME || "1h";
+const ALGORITHM = process.env.ALGORITHM || "HS512";
 
 class Auth {
 	#database;
-	#bcrypt;
-	constructor() {
-		this.#database = new Database();
-		this.#bcrypt = new Bcrypt();
+	#salt = 10;
+	constructor(database = new Database()) {
+		this.#database = database;
 	}
 
 	registerUser(username, password, callback) {
-		const hash = this.#bcrypt.hashPassword(password);
+		const hash = bcrypt.hashSync(password, this.#salt);
 		this.#database.registerUser(username, hash, callback);
 	}
-	authenticateUser(username, password, callback_success, callback_fail) {
+
+	authenticateUser(username, password, successCallback, failCallback) {
 		this.#database.getUser(
 			username,
 			function (err, row) {
@@ -22,20 +26,49 @@ class Auth {
 						"Error getting user from database:",
 						err.message || "User not found"
 					);
-					callback_fail();
+					failCallback();
+				} else if (bcrypt.compareSync(password, row.password)) {
+					successCallback(row);
 				} else {
-					console.log("row:", row);
-					console.log(this.#bcrypt);
-					if (this.#bcrypt.authenticatePassword(password, row.password)) {
-						callback_success(row);
-					} else {
-						callback_fail();
-					}
+					failCallback();
 				}
-			}.bind(
-				this
-			) /* It took me so long to figure out that anonymous functions and arrow functions
+			} /* It took me so long to figure out that anonymous functions and arrow functions
              have different scoping rules. 'this' doesn't behave like I'm used to. I don't like JS */
+		);
+	}
+
+	generateJWT(userID, username, successCallback, failCallback) {
+		jwt.sign(
+			{
+				ID: userID,
+				username: username,
+			},
+			SECRET_KEY,
+			{ expiresIn: TOKEN_EXPIRATION_TIME, algorithm: ALGORITHM },
+			function (err, token) {
+				if (err) {
+					failCallback();
+				} else {
+					successCallback(token);
+				}
+			}
+		);
+	}
+
+	verifyJWT(token, successCallback, failCallback) {
+		jwt.verify(
+			token,
+			SECRET_KEY,
+			{
+				algorithms: [ALGORITHM],
+			},
+			function (err, decoded) {
+				if (err) {
+					failCallback();
+				} else {
+					successCallback(decoded);
+				}
+			}
 		);
 	}
 }
