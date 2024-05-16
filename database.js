@@ -37,6 +37,15 @@ class Database {
 		query.finalize();
 	}
 
+	// TODO: WIP
+	getUserByIDAndUsername(id, username, callback) {
+		const query = this.#db.prepare(
+			"SELECT * FROM users WHERE ID = ? AND username = ?"
+		);
+		query.get([id, username], callback);
+		query.finalize();
+	}
+
 	createChatroom(name, description, isPrivate, callback) {
 		const query = this.#db.prepare(
 			"INSERT INTO chatrooms (name, description, private) VALUES (?, ?, ?)"

@@ -11,6 +11,7 @@ const database = new Database();
 const Rooms = require("./rooms.js");
 const Users = require("./users.js");
 const Auth = require("./auth.js");
+const User = require("./user.js");
 
 // Load application config/state
 require("./basicstate.js").setup(Users, Rooms);
@@ -292,55 +293,47 @@ io.on("connection", (socket) => {
 	/////////////////////////
 
 	socket.on("authenticate", (credentials, callback) => {
-		if (userLoggedIn) return;
-		console.log("authenticating", credentials.username, credentials.password);
 		const failCallback = () => {
 			callback({ success: false, reason: "Invalid username or password" });
 		};
+		if (!credentials.username || !credentials.password) failCallback();
+		else {
+			const auth = new Auth(database);
+			auth.authenticateUser(
+				credentials.username,
+				credentials.password,
+				(user) => {
+					auth.generateJWT(
+						user.ID,
+						user.username,
+						(token) => {
+							callback({
+								success: true,
+								token: token,
+							});
+						},
+						failCallback
+					);
+				},
+				failCallback
+			);
+		}
+	});
+
+	///////////////////
+	// get-user-data //
+	///////////////////
+	// TODO: WIP
+	socket.on("get-user-data", (data, callback) => {
+		if (!data.token) {
+			callback({ success: false, reason: "No token provided" });
+			return;
+		}
 		const auth = new Auth(database);
-		auth.authenticateUser(
-			credentials.username,
-			credentials.password,
-			(user) => {
-				auth.generateJWT(
-					user.ID,
-					user.username,
-					(token) => {
-						callback({
-							success: true,
-							token: token,
-						});
-					},
-					failCallback
-				);
-			},
-			failCallback
-		);
-		username = credentials.username;
-		userLoggedIn = true;
-		socketmap[username] = socket;
-
-		const user = Users.getUser(username) || newUser(username);
-
-		const rooms = user.getSubscriptions().map((s) => {
-			socket.join("room" + s);
-			return Rooms.getRoom(s);
+		auth.verifyJWT(data.token, (decodedToken) => {
+			const user = new User(decodedToken.ID, decodedToken.username, database);
+			callback({ success: true, data: user.getUserData() });
 		});
-
-		const publicChannels = Rooms.getRooms().filter(
-			(r) => !r.direct && !r.private
-		);
-
-		socket.emit("login", {
-			users: Users.getUsers().map((u) => ({
-				username: u.name,
-				active: u.active,
-			})),
-			rooms: rooms,
-			publicChannels: publicChannels,
-		});
-
-		setUserActiveState(socket, username, true);
 	});
 
 	////////////////
