@@ -31,6 +31,12 @@ db.serialize(() => {
 	db.run(
 		"INSERT OR IGNORE INTO chatrooms (ID, name, description, private) VALUES (1, 'General', 'General chatroom', FALSE)"
 	);
+	db.run(
+		"INSERT OR IGNORE INTO chatrooms (ID, name, description, private) VALUES (2, 'Random', 'Random chatroom', FALSE)"
+	);
+	db.run(
+		"INSERT OR IGNORE INTO chatrooms (ID, name, description, private) VALUES (3, 'Private', 'Private chatroom', TRUE)"
+	);
 });
 
 db.serialize(() => {
@@ -53,6 +59,5 @@ db.serialize(() => {
 		"CREATE TABLE IF NOT EXISTS directmessages (ID INTEGER PRIMARY KEY AUTOINCREMENT, sender_ID INTEGER NOT NULL, receiver_ID INTEGER NOT NULL, content TEXT NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(sender_ID) REFERENCES users(ID), FOREIGN KEY(receiver_ID) REFERENCES users(ID))"
 	);
 });
-
 
 db.close();

@@ -22,8 +22,30 @@ class Database {
 		const query = this.#db.prepare(
 			"INSERT INTO users (username, password) VALUES (?, ?)"
 		);
-		query.run([username, password], callback);
-		query.finalize();
+		const registerGeneral = this.#db.prepare(
+			"INSERT INTO chatmembers (user_ID, room_ID) VALUES (?, 1)"
+		);
+		const registerRandom = this.#db.prepare(
+			"INSERT INTO chatmembers (user_ID, room_ID) VALUES (?, 2)"
+		);
+		const registerPrivate = this.#db.prepare(
+			"INSERT INTO chatmembers (user_ID, room_ID) VALUES (?, 3)"
+		);
+		const finalize = this.#makeFinalizeQueries([
+			query,
+			registerGeneral,
+			registerRandom,
+			registerPrivate,
+		]);
+		query.run([username, password], function (err) {
+			if (err) callback(err);
+			const userID = this.lastID;
+			console.log("User ID:", userID);
+			registerGeneral.run([userID]);
+			registerRandom.run([userID]);
+			registerPrivate.run([userID]);
+			finalize(() => callback(err));
+		});
 	}
 
 	getUser(username, callback) {
@@ -49,7 +71,7 @@ class Database {
 			"SELECT ID, username FROM users where ID != ? AND username != ?"
 		);
 		const chatRoomListQuery = this.#db.prepare(
-			"SELECT chatrooms.ID, chatrooms.name FROM chatrooms RIGHT JOIN chatmembers ON chatrooms.ID = chatmembers.room_ID AND chatmembers.user_ID = ?"
+			"SELECT chatrooms.ID, chatrooms.name, chatrooms.private FROM chatrooms INNER JOIN chatmembers ON chatrooms.ID = chatmembers.room_ID AND chatmembers.user_ID = ? ORDER BY chatrooms.ID"
 		);
 		const finalize = this.#makeFinalizeQueries([
 			userListQuery,
@@ -61,10 +83,9 @@ class Database {
 				chatRoomListQuery.all([userID], function (err, chatRooms) {
 					if (err) finalize(() => callback(err, chatRooms));
 					else
-						finalize(() => {
-							if (chatRooms.some((room) => room.name === null)) chatRooms = [];
-							callback(err, { directChats: users, chatRooms: chatRooms });
-						});
+						finalize(() =>
+							callback(err, { directChats: users, chatRooms: chatRooms })
+						);
 				});
 		});
 	}
