@@ -44,7 +44,12 @@ db.serialize(() => {
 	db.run(
 		"CREATE TABLE IF NOT EXISTS chatmembers (user_ID INTEGER NOT NULL, room_ID INTEGER NOT NULL, FOREIGN KEY(user_ID) REFERENCES users(ID), FOREIGN KEY(room_ID) REFERENCES chatrooms(ID))"
 	);
+	db.run(
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_membership ON chatmembers (user_ID, room_ID)"
+	);
 	db.run("INSERT OR IGNORE INTO chatmembers (user_ID, room_ID) VALUES (1, 1)");
+	db.run("INSERT OR IGNORE INTO chatmembers (user_ID, room_ID) VALUES (1, 2)");
+	db.run("INSERT OR IGNORE INTO chatmembers (user_ID, room_ID) VALUES (1, 3)");
 });
 
 db.serialize(() => {
