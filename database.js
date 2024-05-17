@@ -58,12 +58,12 @@ class Database {
 		userListQuery.all([userID, username], function (err, users) {
 			if (err) finalize(() => callback(err, users));
 			else
-				chatRoomListQuery.all([userID], function (err, chatrooms) {
-					if (err) finalize(() => callback(err, chatrooms));
+				chatRoomListQuery.all([userID], function (err, chatRooms) {
+					if (err) finalize(() => callback(err, chatRooms));
 					else
 						finalize(() => {
-							console.log(users, chatrooms);
-							callback(err, { users: users, chatrooms: chatrooms });
+							if (chatRooms.some((room) => room.name === null)) chatRooms = [];
+							callback(err, { directChats: users, chatRooms: chatRooms });
 						});
 				});
 		});
