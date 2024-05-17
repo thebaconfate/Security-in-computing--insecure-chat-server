@@ -29,6 +29,7 @@ class Auth {
 					);
 					failCallback();
 				} else if (bcrypt.compareSync(password, row.password)) {
+					console.log("User authenticated:", row);
 					successCallback(row);
 				} else {
 					failCallback();
@@ -39,6 +40,7 @@ class Auth {
 	}
 
 	generateJWT(userID, username, successCallback, failCallback) {
+		console.log(userID, username);
 		jwt.sign(
 			{
 				ID: userID,
@@ -56,7 +58,7 @@ class Auth {
 		);
 	}
 
-	verifyJWT(token, successCallback, failCallback) {
+	verifyJWT(token, callback) {
 		jwt.verify(
 			token,
 			SECRET_KEY,
@@ -64,11 +66,7 @@ class Auth {
 				algorithms: [ALGORITHM],
 			},
 			function (err, decoded) {
-				if (err) {
-					failCallback();
-				} else {
-					successCallback(decoded);
-				}
+				callback(err, decoded);
 			}
 		);
 	}

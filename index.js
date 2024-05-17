@@ -9,12 +9,12 @@ const port = process.env.PORT || 3000;
 const Database = require("./database.js");
 const database = new Database();
 const Rooms = require("./rooms.js");
-const Users = require("./users.js");
+const Users = require("./myusers.js");
+const OldUsers = require("./users.js").Users;
 const Auth = require("./auth.js");
-const User = require("./user.js");
 
 // Load application config/state
-require("./basicstate.js").setup(Users, Rooms);
+require("./basicstate.js").setup(OldUsers, Rooms);
 
 server.listen(port, () => {
 	console.log("Server listening on port %d", port);
@@ -26,17 +26,6 @@ server.listen(port, () => {
 
 function sendToRoom(room, event, data) {
 	io.to("room" + room.getId()).emit(event, data);
-}
-
-function newUser(name) {
-	const user = Users.addUser(name);
-	const rooms = Rooms.getForcedRooms();
-
-	rooms.forEach((room) => {
-		addUserToRoom(user, room);
-	});
-
-	return user;
 }
 
 function newRoom(name, user, options) {
@@ -119,7 +108,7 @@ function addMessageToRoom(roomId, username, msg) {
 }
 
 function setUserActiveState(socket, username, state) {
-	const user = Users.getUser(username);
+	const user = OldUsers.getUser(username);
 
 	if (user) user.setActiveState(state);
 
@@ -160,8 +149,8 @@ io.on("connection", (socket) => {
 	socket.on("request_direct_room", (req) => {
 		console.log("request_direct_room", req);
 		if (userLoggedIn) {
-			const user_a = Users.getUser(req.to);
-			const user_b = Users.getUser(username);
+			const user_a = OldUsers.getUser(req.to);
+			const user_b = OldUsers.getUser(username);
 
 			if (user_a && user_b) {
 				const room = getDirectRoom(user_a, user_b);
@@ -180,7 +169,7 @@ io.on("connection", (socket) => {
 	socket.on("add_channel", (req) => {
 		console.log("add_channel", req);
 		if (userLoggedIn) {
-			const user = Users.getUser(username);
+			const user = OldUsers.getUser(username);
 			console.log(req);
 			const room = newChannel(req.name, req.description, req.private, user);
 			const roomCID = "room" + room.getId();
@@ -205,7 +194,7 @@ io.on("connection", (socket) => {
 	socket.on("join_channel", (req) => {
 		console.log("join_channel", req);
 		if (userLoggedIn) {
-			const user = Users.getUser(username);
+			const user = OldUsers.getUser(username);
 			const room = Rooms.getRoom(req.id);
 
 			if (!room.direct && !room.private) {
@@ -225,7 +214,7 @@ io.on("connection", (socket) => {
 	socket.on("add_user_to_channel", (req) => {
 		console.log("add_user_to_channel", req);
 		if (userLoggedIn) {
-			const user = Users.getUser(req.user);
+			const user = OldUsers.getUser(req.user);
 			const room = Rooms.getRoom(req.channel);
 
 			if (!room.direct) {
@@ -247,7 +236,7 @@ io.on("connection", (socket) => {
 	socket.on("leave_channel", (req) => {
 		console.log("leave_channel", req);
 		if (userLoggedIn) {
-			const user = Users.getUser(username);
+			const user = OldUsers.getUser(username);
 			const room = Rooms.getRoom(req.id);
 
 			if (!room.direct && !room.forceMembership) {
@@ -323,16 +312,33 @@ io.on("connection", (socket) => {
 	///////////////////
 	// get-user-data //
 	///////////////////
-	// TODO: WIP
+
+	function missingToken(callback) {
+		callback({ success: false, reason: "Missing token" });
+	}
+
+	function invalidToken(callback) {
+		callback({ success: false, reason: "Invalid token" });
+	}
+
 	socket.on("get-user-data", (data, callback) => {
-		if (!data.token) {
-			callback({ success: false, reason: "No token provided" });
-			return;
-		}
+		if (!data.token) missingToken(callback);
 		const auth = new Auth(database);
-		auth.verifyJWT(data.token, (decodedToken) => {
-			const user = new User(decodedToken.ID, decodedToken.username, database);
-			callback({ success: true, data: user.getUserData() });
+		auth.verifyJWT(data.token, (err, decodedToken) => {
+			if (err) invalidToken(callback);
+			else {
+				const users = new Users(database);
+				console.log(decodedToken);
+				users.getUserData(
+					decodedToken.ID,
+					decodedToken.username,
+					(err, data) => {
+						console.log(data);
+						if (err) invalidToken(callback);
+						else callback(data);
+					}
+				);
+			}
 		});
 	});
 

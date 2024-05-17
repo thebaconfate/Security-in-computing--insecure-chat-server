@@ -11,6 +11,13 @@ class Database {
 		});
 	}
 
+	#makeFinalizeQueries(queries) {
+		return (callback) => {
+			queries.forEach((query) => query.finalize());
+			callback();
+		};
+	}
+
 	registerUser(username, password, callback) {
 		const query = this.#db.prepare(
 			"INSERT INTO users (username, password) VALUES (?, ?)"
@@ -37,13 +44,29 @@ class Database {
 		query.finalize();
 	}
 
-	// TODO: WIP
-	getUserByIDAndUsername(id, username, callback) {
-		const query = this.#db.prepare(
-			"SELECT * FROM users WHERE ID = ? AND username = ?"
+	getUserData(userID, username, callback) {
+		const userListQuery = this.#db.prepare(
+			"SELECT ID, username FROM users where ID != ? AND username != ?"
 		);
-		query.get([id, username], callback);
-		query.finalize();
+		const chatRoomListQuery = this.#db.prepare(
+			"SELECT chatrooms.ID, chatrooms.name FROM chatrooms RIGHT JOIN chatmembers ON chatrooms.ID = chatmembers.room_ID AND chatmembers.user_ID = ?"
+		);
+		const finalize = this.#makeFinalizeQueries([
+			userListQuery,
+			chatRoomListQuery,
+		]);
+		userListQuery.all([userID, username], function (err, users) {
+			if (err) finalize(() => callback(err, users));
+			else
+				chatRoomListQuery.all([userID], function (err, chatrooms) {
+					if (err) finalize(() => callback(err, chatrooms));
+					else
+						finalize(() => {
+							console.log(users, chatrooms);
+							callback(err, { users: users, chatrooms: chatrooms });
+						});
+				});
+		});
 	}
 
 	createChatroom(name, description, isPrivate, callback) {
