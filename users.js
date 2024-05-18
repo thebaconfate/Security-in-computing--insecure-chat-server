@@ -3,7 +3,6 @@ const users = {};
 class User {
     constructor(name) {
         this.name = name;
-
         this.active = false;
         this.subscriptions = [];
     }

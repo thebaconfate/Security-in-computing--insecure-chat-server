@@ -1,4 +1,5 @@
 const Database = require("./database.js");
+const Chatrooms = require("./chatrooms.js");
 
 class User {
 	ID;
@@ -21,6 +22,11 @@ class Users {
 
 	getUser(username, callback) {
 		this.#database.getUser(username, callback);
+	}
+
+	setRoom(userID, room, callback) {
+		const chatrooms = new Chatrooms(this.#database);
+		chatrooms.getRoom(userID, room.ID, callback);
 	}
 }
 

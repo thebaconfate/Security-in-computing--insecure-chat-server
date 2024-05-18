@@ -54,18 +54,6 @@ class Database {
 		query.finalize();
 	}
 
-	getUsers(usernames, callback) {
-		const query = this.#db.prepare("SELECT * FROM users WHERE username IN (?)");
-		query.all([usernames], callback);
-		query.finalize();
-	}
-
-	getUserById(id, callback) {
-		const query = this.#db.prepare("SELECT * FROM users WHERE ID = ?");
-		query.get([id], callback);
-		query.finalize();
-	}
-
 	getUserData(userID, username, callback) {
 		const userListQuery = this.#db.prepare(
 			"SELECT ID, username FROM users where ID != ? AND username != ?"
@@ -87,6 +75,56 @@ class Database {
 							callback(err, { directChats: users, chatRooms: chatRooms })
 						);
 				});
+		});
+	}
+
+	getChatmembersCount(chatroomID, callback) {
+		const query = this.#db.prepare(
+			"SELECT COUNT(DISTINCT user_ID) as members FROM chatmembers WHERE room_ID = ?"
+		);
+		query.get([chatroomID], callback);
+		query.finalize();
+	}
+
+	getChatroomMessages(chatroomID, callback) {
+		const query = this.#db.prepare(
+			"SELECT chatmessages.ID, chatmessages.sender_ID, users.username, chatmessages.content, chatmessages.timestamp FROM chatmessages INNER JOIN chatrooms ON chatmessages.room_ID = chatrooms.ID LEFT JOIN users ON chatmessages.sender_ID = users.ID WHERE chatrooms.ID = ? ORDER BY chatmessages.timestamp"
+		);
+		query.all([chatroomID], callback);
+		query.finalize();
+	}
+
+	getChatroom(userID, chatroomID, callback) {
+		const chatroom = this.#db.prepare(
+			"SELECT chatrooms.ID, chatrooms.name, chatrooms.description, chatrooms.private FROM chatrooms LEFT JOIN chatmembers ON chatrooms.ID = chatmembers.room_ID WHERE chatmembers.room_ID = ? AND chatmembers.user_ID = ?"
+		);
+		const preCallback = (err, messages, room) => {
+			if (err || !messages) callback(err, messages);
+			else {
+				room.history = messages;
+				callback(err, room);
+			}
+		};
+
+		const getChatmembersCountCallback = (err, count, room) => {
+			if (err || !count) callback(err, count);
+			else {
+				room.members = count.members;
+				this.getChatroomMessages(room.ID, function (err, messages) {
+					preCallback(err, messages, room);
+				});
+			}
+		};
+
+		const getChatroomCallback = (err, room) => {
+			if (err || !room) callback(err, room);
+			else
+				this.getChatmembersCount(room.ID, function (err, count) {
+					getChatmembersCountCallback(err, count, room);
+				});
+		};
+		chatroom.get([chatroomID, userID], function (err, room) {
+			getChatroomCallback(err, room);
 		});
 	}
 

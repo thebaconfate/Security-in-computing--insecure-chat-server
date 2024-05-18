@@ -2,69 +2,67 @@ const rooms = [];
 let roomIdCounter = 0;
 
 class Room {
-    constructor(id, name, options) {
-        this.id   =  id;
-        this.name =  name;
+	constructor(id, name, options) {
+		this.id = id;
+		this.name = name;
 
-        this.description = options.description || "";
-      
-        this.forceMembership = !!options.forceMembership;
-        this.private         = !!options.private;
-        this.direct          = !!options.direct;
-  
-        this.members = [];
-        this.history = [];
-    }
+		this.description = options.description || "";
 
-    getId() {
-        return this.id;
-    }
+		this.forceMembership = !!options.forceMembership;
+		this.private = !!options.private;
+		this.direct = !!options.direct;
 
-    getMembers() {
-        return this.members;
-    }
+		this.members = [];
+		this.history = [];
+	}
 
-    getMemberCount(){
-        return this.members.length;
-    }
+	getId() {
+		return this.id;
+	}
 
-    addMember(user) {
-        if (this.members.indexOf(user.name) === -1)
-            this.members.push(user.name);
-    }
+	getMembers() {
+		return this.members;
+	}
 
-    removeMember(user) {        
-        const idx = this.members.indexOf(user.name);
-        if (idx >= 0)
-            this.members.splice(idx, 1);
-    }
+	getMemberCount() {
+		return this.members.length;
+	}
 
-    getHistory() {
-        return this.history;
-    }
+	addMember(user) {
+		if (this.members.indexOf(user.name) === -1) this.members.push(user.name);
+	}
 
-    addMessage(msg) {
-        this.history.push(msg);
-    }
+	removeMember(user) {
+		const idx = this.members.indexOf(user.name);
+		if (idx >= 0) this.members.splice(idx, 1);
+	}
+
+	getHistory() {
+		return this.history;
+	}
+
+	addMessage(msg) {
+		this.history.push(msg);
+	}
 }
 
 module.exports = {
-    addRoom: (name, options) => {
-        const id = roomIdCounter++;
-        const room = new Room(id, name, options);
-        rooms[id] = room;
-        return room;
-    },
+	addRoom: (name, options) => {
+		const id = roomIdCounter++;
+		const room = new Room(id, name, options);
+		rooms[id] = room;
+		return room;
+	},
 
-    getRooms: () => {
-        return rooms;
-    },
+	getRooms: () => {
+		return rooms;
+	},
 
-    getForcedRooms: () => {
-        return rooms.filter(r => r.forceMembership);
-    },
+	getForcedRooms: () => {
+		return rooms.filter((r) => r.forceMembership);
+	},
 
-    getRoom: id => {
-        return rooms[id];
-    }
-}
+	getRoom: (id) => {
+		return rooms[id];
+	},
+};

@@ -342,6 +342,21 @@ io.on("connection", (socket) => {
 		});
 	});
 
+	socket.on("get-room", (data, callback) => {
+		if (!data.token || !data.room.ID || !data.room.name) missingToken(callback);
+		const auth = new Auth(database);
+		auth.verifyJWT(data.token, (err, decodedToken) => {
+			if (err) invalidToken(callback);
+			else {
+				const users = new Users(database);
+				users.setRoom(decodedToken.ID, data.room, (err, room) => {
+					if (err) invalidToken(callback);
+					else callback(room);
+				});
+			}
+		});
+	});
+
 	////////////////
 	// reconnects //
 	////////////////
