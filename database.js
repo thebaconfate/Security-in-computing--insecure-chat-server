@@ -128,6 +128,30 @@ class Database {
 		});
 	}
 
+	sendMessageToChatRoom(roomID, senderID, messageContent, callback) {
+		const query = this.#db.prepare(
+			"INSERT INTO chatmessages (room_ID, sender_ID, content) VALUES (?, ?, ?)"
+		);
+		const insertCallback = (lastID) => {
+			this.getChatroomMessageByID(lastID, callback);
+		};
+		query.run([roomID, senderID, messageContent], function (err) {
+			if (err) callback(err, undefined);
+			else {
+				insertCallback(this.lastID);
+			}
+		});
+		query.finalize();
+	}
+
+	getChatroomMessageByID(messageID, callback) {
+		const query = this.#db.prepare(
+			"SELECT chatmessages.ID, chatmessages.sender_ID, users.username, chatmessages.content, chatmessages.timestamp FROM chatmessages INNER JOIN users ON chatmessages.sender_ID = users.ID WHERE chatmessages.ID = ?"
+		);
+		query.get([messageID], callback);
+		query.finalize();
+	}
+
 	createChatroom(name, description, isPrivate, callback) {
 		const query = this.#db.prepare(
 			"INSERT INTO chatrooms (name, description, private) VALUES (?, ?, ?)"

@@ -28,6 +28,13 @@ class Users {
 		const chatrooms = new Chatrooms(this.#database);
 		chatrooms.getRoom(userID, room.ID, callback);
 	}
+
+	sendMessage(userID, message, callback) {
+		if (message.room) {
+			const chatrooms = new Chatrooms(this.#database);
+			chatrooms.sendMessage(userID, message, callback);
+		}
+	}
 }
 
 module.exports = Users;

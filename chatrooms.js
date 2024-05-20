@@ -9,6 +9,15 @@ class Chatrooms {
 	getRoom(userID, roomID, callback) {
 		this.#database.getChatroom(userID, roomID, callback);
 	}
+
+	sendMessage(userID, message, callback) {
+		this.#database.sendMessageToChatRoom(
+			message.room,
+			userID,
+			message.content,
+			callback
+		);
+	}
 }
 
 module.exports = Chatrooms;

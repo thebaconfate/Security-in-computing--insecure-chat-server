@@ -134,12 +134,24 @@ io.on("connection", (socket) => {
 	// incomming message //
 	///////////////////////
 
-	socket.on("new message", (msg) => {
-		console.log("new message", msg);
-		if (userLoggedIn) {
-			console.log(msg);
-			addMessageToRoom(msg.room, username, msg);
-		}
+	socket.on("send-message", (req, callback) => {
+		console.log("send-message", req);
+		if (!req.token || !req.message) missingToken(callback);
+		const auth = new Auth(database);
+		auth.verifyJWT(req.token, (err, decodedToken) => {
+			if (err) invalidToken(callback);
+			else {
+				const users = new Users(database);
+				users.sendMessage(decodedToken.ID, req.message, (err, msg) => {
+					if (err) invalidToken(callback);
+					else {
+						// TODO: Broadcast new message to all users in the room
+						console.log(`saved message in db: ${msg}`);
+						callback(msg);
+					}
+				});
+			}
+		});
 	});
 
 	/////////////////////////////
@@ -333,9 +345,9 @@ io.on("connection", (socket) => {
 					decodedToken.ID,
 					decodedToken.username,
 					(err, data) => {
-						console.log(data);
+						console.log(`get-user-data, ${data}`);
 						if (err) invalidToken(callback);
-						else callback(data);
+						else callback({ success: true, data: data });
 					}
 				);
 			}
@@ -343,7 +355,8 @@ io.on("connection", (socket) => {
 	});
 
 	socket.on("get-room", (data, callback) => {
-		if (!data.token || !data.room.ID || !data.room.name) missingToken(callback);
+		if (!data?.token || !data?.room?.ID || !data?.room?.name)
+			missingToken(callback);
 		const auth = new Auth(database);
 		auth.verifyJWT(data.token, (err, decodedToken) => {
 			if (err) invalidToken(callback);
@@ -351,7 +364,7 @@ io.on("connection", (socket) => {
 				const users = new Users(database);
 				users.setRoom(decodedToken.ID, data.room, (err, room) => {
 					if (err) invalidToken(callback);
-					else callback(room);
+					else callback({ success: true, room: room });
 				});
 			}
 		});
