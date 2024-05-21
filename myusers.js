@@ -1,40 +1,25 @@
 const Database = require("./database.js");
-const Chatrooms = require("./chatrooms.js");
+const Rooms = require("./myrooms.js");
 
 class User {
-	ID;
-	username;
-	constructor(ID, username) {
-		this.ID = ID;
-		this.username = username;
-	}
-}
-
-class Users {
 	#database;
-	constructor(database = new Database()) {
+	userID;
+	constructor(userID, database = new Database()) {
 		this.#database = database;
+		this.userID = userID;
 	}
 
-	getUserData(userID, username, callback) {
-		this.#database.getUserData(userID, username, callback);
+	getUserData(callback) {
+		this.#database.getUserData(this.userID, callback);
 	}
 
-	getUser(username, callback) {
-		this.#database.getUser(username, callback);
+	getUser(callback) {
+		this.#database.getUserByID(this.userID, callback);
 	}
 
-	setRoom(userID, room, callback) {
-		const chatrooms = new Chatrooms(this.#database);
-		chatrooms.getRoom(userID, room.ID, callback);
-	}
-
-	sendMessage(userID, message, callback) {
-		if (message.room) {
-			const chatrooms = new Chatrooms(this.#database);
-			chatrooms.sendMessage(userID, message, callback);
-		}
+	setState(state, callback) {
+		this.#database.setUserActiveState(this.userID, state, callback);
 	}
 }
 
-module.exports = Users;
+module.exports = User;

@@ -2,7 +2,6 @@ const bcrypt = require("bcrypt");
 const Database = require("./database.js");
 const jwt = require("jsonwebtoken");
 const SECRET_KEY = process.env.SECRET_KEY || "Not-so-secret-secret-key";
-const TOKEN_EXPIRATION_TIME = process.env.TOKEN_EXPIRATION_TIME || "1h";
 const ALGORITHM = process.env.ALGORITHM || "HS512";
 
 class Auth {
@@ -17,29 +16,30 @@ class Auth {
 		this.#database.registerUser(username, hash, callback);
 	}
 
-	authenticateUser(username, password, successCallback, failCallback) {
+	authenticateUser(username, password, callback) {
 		console.log(this.#database);
-		this.#database.getUser(
+		this.#database.getUserByUsername(
 			username,
 			function (err, row) {
 				if (err || !row) {
 					console.log(
 						"Error getting user from database:",
-						err.message || "User not found"
+						err?.message || "User not found"
 					);
-					failCallback();
+					callback(err, row);
 				} else if (bcrypt.compareSync(password, row.password)) {
 					console.log("User authenticated:", row);
-					successCallback(row);
+
+					callback(err, row);
 				} else {
-					failCallback();
+					callback({ success: false, reason: "Invalid password" }, null);
 				}
 			} /* It took me so long to figure out that anonymous functions and arrow functions
              have different scoping rules. 'this' doesn't behave like I'm used to. I don't like JS */
 		);
 	}
 
-	generateJWT(userID, username, successCallback, failCallback) {
+	generateJWT(userID, username, callback) {
 		console.log(userID, username);
 		jwt.sign(
 			{
@@ -47,12 +47,12 @@ class Auth {
 				username: username,
 			},
 			SECRET_KEY,
-			{ expiresIn: TOKEN_EXPIRATION_TIME, algorithm: ALGORITHM },
+			{ algorithm: ALGORITHM },
 			function (err, token) {
 				if (err) {
-					failCallback();
+					callback(err, null);
 				} else {
-					successCallback(token);
+					callback(err, token);
 				}
 			}
 		);
