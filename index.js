@@ -121,8 +121,8 @@ function sendToRoomOLD(room, event, data) {
 	io.to("room" + room.getId()).emit(event, data);
 }
 
-function sendToRoom(room, event, data) {
-	io.to(`room${room}`).emit(event, data);
+function sendToRoom(roomID, event, data) {
+	io.to(`room${roomID}`).emit(event, data);
 }
 
 function newRoom(name, user, options) {
@@ -234,9 +234,10 @@ io.on("connection", (socket) => {
 	/////////////////////////
 
 	socket.on("authenticate", (credentials, callback) => {
-		if (!credentials.username || !credentials.password)
+		if (!credentials.username || !credentials.password) {
 			callback({ success: false, reason: "Invalid username or password" });
-		else
+			socket.disconnect(true);
+		} else
 			authenticateUser(credentials.username, credentials.password, (result) => {
 				if (result.success) setUserState(socket, result.ID, true);
 				callback(result);
@@ -294,9 +295,8 @@ io.on("connection", (socket) => {
 			room.sendMessage(decodedToken.ID, req.message.content, (err, message) => {
 				if (err) invalidToken(callback);
 				else {
-					// TODO: broadcast the message to the room
 					addMessageToRoom(message);
-					callback(message);
+					callback({ success: true });
 				}
 			});
 		});
