@@ -1,20 +1,19 @@
 const Database = require("./database.js");
 
-class Room {
+class Rooms {
 	#database;
-	roomID;
-	constructor(roomID, database = new Database()) {
+	constructor(database = new Database()) {
 		this.#database = database;
 		this.roomID = roomID;
 	}
 
-	getRoom(userID, callback) {
-		this.#database.getRoom(userID, this.roomID, callback);
+	getRoom(roomID, userID, callback) {
+		this.#database.getRoom(roomID, userID, callback);
 	}
 
-	sendMessage(userID, message, callback) {
-		this.#database.sendMessageToRoom(this.roomID, userID, message, callback);
+	sendMessage(roomID, userID, message, callback) {
+		this.#database.sendMessageToRoom(roomID, userID, message, callback);
 	}
 }
 
-module.exports = Room;
+module.exports = Rooms;

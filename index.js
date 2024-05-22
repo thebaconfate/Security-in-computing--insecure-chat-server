@@ -8,7 +8,7 @@ const io = require("socket.io")(server);
 const port = process.env.PORT || 3000;
 const Database = require("./database.js");
 const database = new Database();
-const Room = require("./myrooms.js");
+const Rooms = require("./myrooms.js");
 const OldRooms = require("./rooms.js");
 const User = require("./myusers.js");
 const OldUsers = require("./users.js").Users;
@@ -291,14 +291,19 @@ io.on("connection", (socket) => {
 				callback({ success: false, reason: "No room supplied" });
 			if (!req.message?.content)
 				callback({ success: false, reason: "No message supplied" });
-			const room = new Room(req.message.room, database);
-			room.sendMessage(decodedToken.ID, req.message.content, (err, message) => {
-				if (err) invalidToken(callback);
-				else {
-					addMessageToRoom(message);
-					callback({ success: true });
+			const room = new Rooms(database);
+			room.sendMessage(
+				req.message.room,
+				decodedToken.ID,
+				req.message.content,
+				(err, message) => {
+					if (err) invalidToken(callback);
+					else {
+						addMessageToRoom(message);
+						callback({ success: true });
+					}
 				}
-			});
+			);
 		});
 	});
 
@@ -313,8 +318,8 @@ io.on("connection", (socket) => {
 	socket.on("get-room", (data, callback) => {
 		authenticateToken(data.token, (err, decodedToken) => {
 			if (err || !decodedToken) callback(err);
-			const room = new Room(data.room, database);
-			room.getRoom(decodedToken.ID, (err, room) => {
+			const room = new Rooms(database);
+			room.getRoom(data.room, decodedToken.ID, (err, room) => {
 				if (err || !room) callback({ success: false, reason: "Invalid room" });
 				else callback({ success: true, room: room });
 			});

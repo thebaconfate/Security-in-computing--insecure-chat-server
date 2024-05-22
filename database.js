@@ -103,7 +103,7 @@ class Database {
 		query.finalize();
 	}
 
-	getRoom(userID, roomID, callback) {
+	getRoom(roomID, userID, callback) {
 		const chatroom = this.#db.prepare(
 			"SELECT rooms.ID, rooms.name, rooms.description, rooms.private, rooms.direct FROM rooms LEFT JOIN members ON rooms.ID = members.room_ID WHERE members.room_ID = ? AND members.user_ID = ?"
 		);
