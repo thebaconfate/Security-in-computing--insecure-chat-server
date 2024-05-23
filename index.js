@@ -462,9 +462,20 @@ io.on("connection", (socket) => {
 				const rooms = new Rooms(database);
 				rooms.removeUserFromChannel(decodedToken.ID, req.ID, (err) => {
 					if (!err) {
-						socket.leave(`room${req.ID}`);
-						socket.emit("remove_room", {
-							room: req.ID,
+						rooms.getMembers(req.ID, (err, members) => {
+							if (!err) {
+								sendToRoom(req.ID, "update_user", {
+									room: req.ID,
+									username: decodedToken.username,
+									action: "removed",
+									members: members,
+								});
+								console.log("bced update user");
+								socket.leave(`room${req.ID}`);
+								socket.emit("remove_room", {
+									room: req.ID,
+								});
+							}
 						});
 					}
 				});

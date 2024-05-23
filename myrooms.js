@@ -71,6 +71,10 @@ class Rooms {
 	removeUserFromChannel(userID, roomID, callback) {
 		this.#database.removeUserFromChannel(userID, roomID, callback);
 	}
+
+	getMembers(roomID, callback) {
+		this.#database.getMembersCount(roomID, callback);
+	}
 }
 
 module.exports = Rooms;
