@@ -21,6 +21,7 @@ server.listen(port, () => {
 	console.log("Server listening on port %d", port);
 });
 
+const socketMap = {};
 ////////////////////////////
 // Authentication helpers //
 ////////////////////////////
@@ -48,7 +49,7 @@ function createUser(username, password, callback) {
  * @param {string} password - The password of the user to authenticate
  * @param {Function} callback - The callback function to call when the user is authenticated, or an error is encountered
  */
-function authenticateUser(username, password, callback) {
+function authenticateUser(username, password, socket, callback) {
 	const auth = new Auth(database);
 	auth.authenticateUser(username, password, (err, user) => {
 		if (err || !user)
@@ -56,7 +57,10 @@ function authenticateUser(username, password, callback) {
 		else
 			auth.generateJWT(user.ID, user.username, (err, token) => {
 				if (err) callback({ success: false, reason: "Error generating token" });
-				else callback({ success: true, token: token });
+				else {
+					socketMap[user.ID] = socket;
+					callback({ success: true, token: token });
+				}
 			});
 	});
 }
@@ -205,8 +209,6 @@ function setUserActiveStateOLD(socket, username, state) {
 // IO connection handler //
 ///////////////////////////
 
-const socketMap = {};
-
 io.on("connection", (socket) => {
 	let userLoggedIn = false;
 	let username = false;
@@ -238,10 +240,15 @@ io.on("connection", (socket) => {
 			callback({ success: false, reason: "Invalid username or password" });
 			socket.disconnect(true);
 		} else
-			authenticateUser(credentials.username, credentials.password, (result) => {
-				if (result.success) setUserState(socket, result.ID, true);
-				callback(result);
-			});
+			authenticateUser(
+				credentials.username,
+				credentials.password,
+				socket,
+				(result) => {
+					if (result.success) setUserState(socket, result.ID, true);
+					callback(result);
+				}
+			);
 	});
 
 	///////////////////
@@ -318,7 +325,7 @@ io.on("connection", (socket) => {
 	 */
 	socket.on("get-room", (data, callback) => {
 		authenticateToken(data.token, (err, decodedToken) => {
-			console.log(data);
+			console.log("get-room", data);
 			if (err || !decodedToken) callback(err);
 			const rooms = new Rooms(database);
 			rooms.getRoom(data.room, decodedToken.ID, (err, room) => {
@@ -337,24 +344,29 @@ io.on("connection", (socket) => {
 	 */
 
 	socket.on("request_direct_room", (req) => {
-		if (!req.token || !req.to) missingToken(callback);
-		const auth = new Auth(database);
-		auth.verifyJWT(req.token, (err, decodedToken) => {
-			if (decodedToken) {
-				const rooms = new Rooms(database);
-				rooms.getDirectRoom(decodedToken.ID, req.to, (err, room) => {
-					if (err) invalidToken(callback);
-					socket.join(`room${room.ID}`);
-					if (socketMap[req.to]) socketMap[req.to].join(`room${room.ID}`);
-					socket.emit("update_room", {
-						room: room,
-						moveto: true,
+		if (req.token && req.to) {
+			console.log("request_direct_room", req);
+			const auth = new Auth(database);
+			auth.verifyJWT(req.token, (err, decodedToken) => {
+				if (decodedToken) {
+					const rooms = new Rooms(database);
+					rooms.getDirectRoom(decodedToken.ID, req.to, (err, room) => {
+						if (err) invalidToken(callback);
+						socket.join(`room${room.ID}`);
+						if (socketMap[req.to]) socketMap[req.to].join(`room${room.ID}`);
+						socket.emit("update_room", {
+							room: room,
+							moveto: true,
+						});
 					});
-				});
-			}
-		});
+				}
+			});
+		}
 	});
 
+	/**
+	 * @param {Object} req - The request object containing the token and the room name, description and wether it's private or not
+	 */
 	socket.on("add_channel", (req) => {
 		console.log("add_channel", req);
 		authenticateToken(req.token, (err, decodedToken) => {
@@ -392,7 +404,10 @@ io.on("connection", (socket) => {
 		});
 	});
 
-	// TODO: Refactor this
+	/**
+	 * @param {Object} req - The request object containing the token and the room ID
+	 
+	 */
 	socket.on("join_channel", (req) => {
 		console.log("join_channel", req);
 		authenticateToken(req.token, (err, decodedToken) => {
@@ -420,6 +435,23 @@ io.on("connection", (socket) => {
 	// TODO: Refactor this
 	socket.on("add_user_to_channel", (req) => {
 		console.log("add_user_to_channel", req);
+		authenticateToken(req.token, (err, decodedToken) => {
+			if (decodedToken) {
+				const rooms = new Rooms(database);
+				rooms.addUserToChannel(req.user, req.channel, (err, userID, room) => {
+					if (!err && userID && room) {
+						if (socketMap[userID]) {
+							socketMap[userID].join(`room${room.ID}`);
+							socketMap[userID].emit("update_room", {
+								room: room,
+								moveto: true,
+							});
+						}
+					}
+				});
+			}
+		});
+
 		if (userLoggedIn) {
 			const user = OldUsers.getUser(req.user);
 			const room = OldRooms.getRoom(req.channel);

@@ -216,7 +216,7 @@ class Database {
 
 	getMessageByID(messageID, callback) {
 		const query = this.#db.prepare(
-			"SELECT messages.ID, messages.room_ID as roomID, messages.sender_ID as senderID, users.username, messages.content, messages.timestamp FROM messages INNER JOIN users ON messages.sender_ID = users.ID WHERE messages.ID = ?"
+			"SELECT messages.ID, messages.room_ID as roomID, messages.sender_ID as senderID, users.username, messages.content, messages.timestamp, rooms.direct FROM messages INNER JOIN users ON messages.sender_ID = users.ID LEFT JOIN rooms ON messages.room_ID = rooms.ID WHERE messages.ID = ?"
 		);
 		query.get([messageID], callback);
 		query.finalize();

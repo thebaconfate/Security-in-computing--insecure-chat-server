@@ -52,6 +52,21 @@ class Rooms {
 			}
 		});
 	}
+
+	addUserToChannel(username, channelID, callback) {
+		this.#database.getUserByUsername(username, (err, user) => {
+			if (err || !user) callback("User not found", null, null);
+			else {
+				this.#database.addUserToChannel(user.ID, channelID, (err) => {
+					if (err) callback(err, null, null);
+					else
+						this.#database.getRoom(channelID, user.ID, (err, room) => {
+							callback(err, user.ID, room);
+						});
+				});
+			}
+		});
+	}
 }
 
 module.exports = Rooms;
