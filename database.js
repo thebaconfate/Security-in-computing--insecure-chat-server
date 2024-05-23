@@ -65,7 +65,7 @@ class Database {
 			"SELECT ID, username, active FROM users where ID != ? ORDER BY ID"
 		);
 		const chatRoomListQuery = this.#db.prepare(
-			"SELECT rooms.ID, rooms.name, rooms.private FROM rooms INNER JOIN members ON rooms.ID = members.room_ID AND members.user_ID = ? ORDER BY rooms.ID"
+			"SELECT rooms.ID, rooms.name, rooms.private, rooms.direct FROM rooms INNER JOIN members ON rooms.ID = members.room_ID AND members.user_ID = ? ORDER BY rooms.ID"
 		);
 		const finalize = this.#makeFinalizeQueries([
 			userListQuery,
@@ -87,7 +87,7 @@ class Database {
 		query.finalize();
 	}
 
-	getChatmembersCount(roomID, callback) {
+	getMembersCount(roomID, callback) {
 		const query = this.#db.prepare(
 			"SELECT COUNT(DISTINCT user_ID) as members FROM members WHERE room_ID = ?"
 		);
@@ -114,7 +114,7 @@ class Database {
 				callback(err, room);
 			}
 		};
-		const getChatmembersCountCallback = (err, count, room) => {
+		const getMembersCountCallback = (err, count, room) => {
 			if (err || !count) callback(err, count);
 			else {
 				room.members = count.members;
@@ -127,13 +127,55 @@ class Database {
 		const getRoomCallback = (err, room) => {
 			if (err || !room) callback(err, room);
 			else
-				this.getChatmembersCount(room.ID, function (err, count) {
-					getChatmembersCountCallback(err, count, room);
+				this.getMembersCount(room.ID, function (err, count) {
+					getMembersCountCallback(err, count, room);
 				});
 		};
 		chatroom.get([roomID, userID], function (err, room) {
 			console.log("room", room);
 			getRoomCallback(err, room);
+		});
+	}
+
+	getDirectRoom(userID, otherUserID, callback) {
+		const query = this.#db.prepare(
+			"SELECT rooms.ID, rooms.name, rooms.private, rooms.direct FROM rooms WHERE rooms.direct = TRUE AND rooms.ID IN (SELECT room_ID FROM members WHERE user_ID = ? INTERSECT SELECT room_ID FROM members WHERE user_ID = ?)"
+		);
+		query.get([userID, otherUserID], function (err, room) {
+			callback(err, room);
+		});
+		query.finalize();
+	}
+
+	getDirectRoomByID(roomID, callback) {
+		const query = this.#db.prepare(
+			"SELECT rooms.ID, rooms.name, rooms.description, rooms.private, rooms.direct FROM rooms WHERE rooms.direct = TRUE AND rooms.ID = ?"
+		);
+		query.get([roomID], function (err, room) {
+			callback(err, room);
+		});
+		query.finalize();
+	}
+
+	createDirectRoom(userID, otherUserID, callback) {
+		const createRoomQuery = this.#db.prepare(
+			"INSERT INTO rooms (name, description, private, direct) VALUES (?, ?, 1, 1)"
+		);
+		const name = "Direct room";
+		const description = "Direct room";
+		const insertCallback = (lastID) => {
+			const insertMemberQuery = this.#db.prepare(
+				"INSERT INTO members (user_ID, room_ID) VALUES (?, ?)"
+			);
+			insertMemberQuery.run([userID, lastID]);
+			insertMemberQuery.run([otherUserID, lastID]);
+			insertMemberQuery.finalize();
+			callback(null, lastID);
+		};
+		createRoomQuery.run([name, description], function (err) {
+			const roomID = this.lastID;
+			if (err) callback(err, null);
+			else insertCallback(roomID);
 		});
 	}
 

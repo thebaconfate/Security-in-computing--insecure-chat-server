@@ -267,6 +267,7 @@ io.on("connection", (socket) => {
 							socket.join(`room${room.ID}`);
 							return room;
 						});
+						console.log("get-user-data", data);
 						data.rooms = rooms.filter((room) => !room.direct);
 						console.log("get-user-data", data);
 						callback({ success: true, data: data });
@@ -318,8 +319,8 @@ io.on("connection", (socket) => {
 	socket.on("get-room", (data, callback) => {
 		authenticateToken(data.token, (err, decodedToken) => {
 			if (err || !decodedToken) callback(err);
-			const room = new Rooms(database);
-			room.getRoom(data.room, decodedToken.ID, (err, room) => {
+			const rooms = new Rooms(database);
+			rooms.getRoom(data.room, decodedToken.ID, (err, room) => {
 				if (err || !room) callback({ success: false, reason: "Invalid room" });
 				else callback({ success: true, room: room });
 			});
@@ -330,38 +331,29 @@ io.on("connection", (socket) => {
 	// request for direct room //
 	/////////////////////////////
 
-	// TODO: Refactor this
+	/**
+	 * @param {Object} req - The request object containing the token and the user ID to create a direct room with
+	 */
+
 	socket.on("request_direct_room", (req) => {
 		if (!req.token || !req.to) missingToken(callback);
 		const auth = new Auth(database);
 		auth.verifyJWT(req.token, (err, decodedToken) => {
 			if (err) invalidToken(callback);
 			else {
-				const rooms = new OldRooms(database);
+				const rooms = new Rooms(database);
 				rooms.getDirectRoom(decodedToken.ID, req.to, (err, room) => {
 					if (err) invalidToken(callback);
+					socket.join(`room${room.ID}`);
+					if (socketMap[req.to]) socketMap[req.to].join(`room${room.ID}`);
+					socket.emit("update_room", {
+						room: room,
+						moveto: true,
+						otherUser: req.to,
+					});
 				});
 			}
 		});
-
-		console.log("request_direct_room", req);
-
-		if (userLoggedIn) {
-			const user_a = OldUsers.getUser(req.to);
-			const user_b = OldUsers.getUser(username);
-
-			if (user_a && user_b) {
-				const room = getDirectRoom(user_a, user_b);
-				const roomCID = "room" + room.getId();
-				socket.join(roomCID);
-				if (socketMap[user_a.name]) socketMap[user_a.name].join(roomCID);
-
-				socket.emit("update_room", {
-					room: room,
-					moveto: true,
-				});
-			}
-		}
 	});
 
 	// TODO: Refactor this
