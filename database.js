@@ -71,12 +71,25 @@ class Database {
 			userListQuery,
 			chatRoomListQuery,
 		]);
+		const getAllPublicRooms = (acc, callback) => {
+			this.getPublicRooms((err, rooms) => {
+				if (err) callback(err, null);
+				else {
+					acc.publicChannels = rooms;
+					callback(err, acc);
+				}
+			});
+		};
+
 		userListQuery.all([userID], function (err, users) {
 			if (err) finalize(() => callback(err, users));
 			else
 				chatRoomListQuery.all([userID], function (err, rooms) {
 					if (err) finalize(() => callback(err, rooms));
-					else finalize(() => callback(err, { users: users, rooms: rooms }));
+					else
+						finalize(() =>
+							getAllPublicRooms({ users: users, rooms: rooms }, callback)
+						);
 				});
 		});
 	}
@@ -253,6 +266,7 @@ class Database {
 			"INSERT INTO members (user_ID, room_ID) VALUES (?, ?)"
 		);
 		query.run([userID, roomID], function (err) {
+			console.log("added user to channel");
 			callback(err);
 		});
 		query.finalize();
@@ -264,6 +278,17 @@ class Database {
 		);
 		query.all(function (err, rows) {
 			callback(err, rows);
+		});
+	}
+
+	addUserToPublicChannel(userID, roomID, callback) {
+		this.getRoomByID(roomID, (err, room) => {
+			console.log("got room by id:", room);
+			if (err || !room) callback(err, room);
+			else if (room.private) callback("Room is private", null);
+			else {
+				this.addUserToChannel(userID, roomID, callback);
+			}
 		});
 	}
 }

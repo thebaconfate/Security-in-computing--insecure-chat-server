@@ -42,6 +42,16 @@ class Rooms {
 	getPublicRooms(callback) {
 		this.#database.getPublicRooms(callback);
 	}
+
+	addUserToPublicChannel(userID, roomID, callback) {
+		this.#database.addUserToPublicChannel(userID, roomID, (err) => {
+			if (err) callback(err, null);
+			else {
+				console.log("added user to channel, getting room");
+				this.#database.getRoom(roomID, userID, callback);
+			}
+		});
+	}
 }
 
 module.exports = Rooms;

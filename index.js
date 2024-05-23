@@ -318,6 +318,7 @@ io.on("connection", (socket) => {
 	 */
 	socket.on("get-room", (data, callback) => {
 		authenticateToken(data.token, (err, decodedToken) => {
+			console.log(data);
 			if (err || !decodedToken) callback(err);
 			const rooms = new Rooms(database);
 			rooms.getRoom(data.room, decodedToken.ID, (err, room) => {
@@ -339,8 +340,7 @@ io.on("connection", (socket) => {
 		if (!req.token || !req.to) missingToken(callback);
 		const auth = new Auth(database);
 		auth.verifyJWT(req.token, (err, decodedToken) => {
-			if (err) invalidToken(callback);
-			else {
+			if (decodedToken) {
 				const rooms = new Rooms(database);
 				rooms.getDirectRoom(decodedToken.ID, req.to, (err, room) => {
 					if (err) invalidToken(callback);
@@ -358,55 +358,63 @@ io.on("connection", (socket) => {
 	socket.on("add_channel", (req) => {
 		console.log("add_channel", req);
 		authenticateToken(req.token, (err, decodedToken) => {
-			if (err) invalidToken(callback);
-			const rooms = new Rooms(database);
-			rooms.createRoom(req.name, req.description, req.private, (err, room) => {
-				if (err) invalidToken(callback);
-				else {
-					const users = new User(decodedToken.ID, database);
-					users.joinChannel(room.ID, (err) => {
-						if (err) invalidToken(callback);
-						else {
-							socket.join(`room${room.ID}`);
-							socket.emit("update_room", {
-								room: room,
-								moveto: true,
-							});
-							if (!room.private) {
-								rooms.getPublicRooms((err, rooms) => {
-									if (err) invalidToken(callback);
-									console.log("rooms", rooms);
-									socket.broadcast.emit("update_public_channels", {
-										publicChannels: rooms,
+			if (decodedToken) {
+				const rooms = new Rooms(database);
+				rooms.createRoom(
+					req.name,
+					req.description,
+					req.private,
+					(err, room) => {
+						if (room) {
+							const users = new User(decodedToken.ID, database);
+							users.joinChannel(room.ID, (err) => {
+								if (!err) {
+									socket.join(`room${room.ID}`);
+									socket.emit("update_room", {
+										room: room,
+										moveto: true,
 									});
-								});
-							}
+									if (!room.private) {
+										rooms.getPublicRooms((err, rooms) => {
+											if (err) invalidToken(callback);
+											console.log("rooms", rooms);
+											socket.broadcast.emit("update_public_channels", {
+												publicChannels: rooms,
+											});
+										});
+									}
+								}
+							});
 						}
-					});
-				}
-			});
+					}
+				);
+			}
 		});
 	});
 
 	// TODO: Refactor this
 	socket.on("join_channel", (req) => {
 		console.log("join_channel", req);
-		if (userLoggedIn) {
-			const user = OldUsers.getUser(username);
-			const room = OldRooms.getRoom(req.id);
-
-			if (!room.direct && !room.private) {
-				addUserToRoom(user, room);
-
-				const roomCID = "room" + room.getId();
-				socket.join(roomCID);
-
-				socket.emit("update_room", {
-					room: room,
-					moveto: true,
+		authenticateToken(req.token, (err, decodedToken) => {
+			if (decodedToken) {
+				const rooms = new Rooms(database);
+				rooms.addUserToPublicChannel(decodedToken.ID, req.ID, (err, room) => {
+					if (!err) {
+						socket.join(`room${room.ID}`);
+						socket.emit("update_room", {
+							room: room,
+							moveto: true,
+						});
+						rooms.getPublicRooms((err, rooms) => {
+							if (!err)
+								socket.emit("update_public_channels", {
+									publicChannels: rooms,
+								});
+						});
+					}
 				});
 			}
-		}
+		});
 	});
 
 	// TODO: Refactor this
