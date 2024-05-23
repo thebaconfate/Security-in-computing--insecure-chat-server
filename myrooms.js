@@ -31,6 +31,17 @@ class Rooms {
 			}
 		});
 	}
+
+	createRoom(name, description, isPrivate, callback) {
+		this.#database.createRoom(name, description, isPrivate, (err, lastID) => {
+			if (err) callback(err, null);
+			else this.#database.getRoomByID(lastID, callback);
+		});
+	}
+
+	getPublicRooms(callback) {
+		this.#database.getPublicRooms(callback);
+	}
 }
 
 module.exports = Rooms;

@@ -89,9 +89,15 @@ class Database {
 
 	getMembersCount(roomID, callback) {
 		const query = this.#db.prepare(
-			"SELECT COUNT(DISTINCT user_ID) as members FROM members WHERE room_ID = ?"
+			"SELECT DISTINCT users.username FROM members LEFT JOIN users ON members.user_ID = users.ID WHERE room_ID = ?"
 		);
-		query.get([roomID], callback);
+		query.all([roomID], function (err, rows) {
+			if (rows)
+				rows = rows.map((row) => {
+					return row.username;
+				});
+			callback(err, rows);
+		});
 		query.finalize();
 	}
 
@@ -117,7 +123,7 @@ class Database {
 		const getMembersCountCallback = (err, count, room) => {
 			if (err || !count) callback(err, count);
 			else {
-				room.members = count.members;
+				room.members = count;
 				console.log("room", room);
 				this.getChatroomMessages(room.ID, function (err, messages) {
 					preCallback(err, messages, room);
@@ -201,6 +207,64 @@ class Database {
 		);
 		query.get([messageID], callback);
 		query.finalize();
+	}
+
+	createRoom(name, description, isprivate, callback) {
+		const query = this.#db.prepare(
+			"INSERT INTO rooms (name, description, private) VALUES (?, ?, ?)"
+		);
+		query.run([name, description, isprivate], function (err) {
+			callback(err, this.lastID);
+		});
+	}
+
+	getRoomByID(roomID, callback) {
+		const query = this.#db.prepare("SELECT * FROM rooms WHERE ID = ?");
+		const getMembersCallback = (err, room) => {
+			if (err || !room) callback(err, room);
+			else
+				this.getChatroomMessages(roomID, function (err, messages) {
+					if (err) callback(err, messages);
+					else {
+						room.history = messages;
+						callback(err, room);
+					}
+				});
+		};
+		const getRoomCallback = (err, room) => {
+			if (err || !room) callback(err, room);
+			else
+				this.getMembersCount(roomID, function (err, count) {
+					if (err) callback(err, count);
+					else {
+						room.members = count;
+						getMembersCallback(err, room);
+					}
+				});
+		};
+		query.get([roomID], function (err, room) {
+			getRoomCallback(err, room);
+		});
+		query.finalize();
+	}
+
+	addUserToChannel(userID, roomID, callback) {
+		const query = this.#db.prepare(
+			"INSERT INTO members (user_ID, room_ID) VALUES (?, ?)"
+		);
+		query.run([userID, roomID], function (err) {
+			callback(err);
+		});
+		query.finalize();
+	}
+
+	getPublicRooms(callback) {
+		const query = this.#db.prepare(
+			"SELECT rooms.ID, rooms.name, rooms.description, rooms.private, rooms.direct FROM rooms WHERE rooms.private = FALSE ORDER BY rooms.ID"
+		);
+		query.all(function (err, rows) {
+			callback(err, rows);
+		});
 	}
 }
 

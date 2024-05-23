@@ -20,6 +20,10 @@ class User {
 	setState(state, callback) {
 		this.#database.setUserActiveState(this.userID, state, callback);
 	}
+
+	joinChannel(RoomID, callback) {
+		this.#database.addUserToChannel(this.userID, RoomID, callback);
+	}
 }
 
 module.exports = User;
