@@ -67,6 +67,10 @@ class Rooms {
 			}
 		});
 	}
+
+	removeUserFromChannel(userID, roomID, callback) {
+		this.#database.removeUserFromChannel(userID, roomID, callback);
+	}
 }
 
 module.exports = Rooms;

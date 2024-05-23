@@ -291,6 +291,16 @@ class Database {
 			}
 		});
 	}
+
+	removeUserFromChannel(userID, roomID, callback) {
+		const query = this.#db.prepare(
+			"DELETE FROM members WHERE user_ID = ? AND room_ID = ?"
+		);
+		query.run([userID, roomID], function (err) {
+			callback(err);
+		});
+		query.finalize();
+	}
 }
 
 module.exports = Database;

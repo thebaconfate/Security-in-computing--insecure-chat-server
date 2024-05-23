@@ -406,7 +406,6 @@ io.on("connection", (socket) => {
 
 	/**
 	 * @param {Object} req - The request object containing the token and the room ID
-	 
 	 */
 	socket.on("join_channel", (req) => {
 		console.log("join_channel", req);
@@ -432,7 +431,9 @@ io.on("connection", (socket) => {
 		});
 	});
 
-	// TODO: Refactor this
+	/**
+	 * @param {Object} req - The request object containing the token, the username of the user to add and the channel ID
+	 */
 	socket.on("add_user_to_channel", (req) => {
 		console.log("add_user_to_channel", req);
 		authenticateToken(req.token, (err, decodedToken) => {
@@ -451,45 +452,24 @@ io.on("connection", (socket) => {
 				});
 			}
 		});
-
-		if (userLoggedIn) {
-			const user = OldUsers.getUser(req.user);
-			const room = OldRooms.getRoom(req.channel);
-
-			if (!room.direct) {
-				addUserToRoom(user, room);
-
-				if (socketMap[user.name]) {
-					const roomCID = "room" + room.getId();
-					socketMap[user.name].join(roomCID);
-
-					socketMap[user.name].emit("update_room", {
-						room: room,
-						moveto: false,
-					});
-				}
-			}
-		}
 	});
 
 	// TODO: Refactor this
 	socket.on("leave_channel", (req) => {
 		console.log("leave_channel", req);
-		if (userLoggedIn) {
-			const user = OldUsers.getUser(username);
-			const room = OldRooms.getRoom(req.id);
-
-			if (!room.direct && !room.forceMembership) {
-				removeUserFromRoom(user, room);
-
-				const roomCID = "room" + room.getId();
-				socket.leave(roomCID);
-
-				socket.emit("remove_room", {
-					room: room.getId(),
+		authenticateToken(req.token, (err, decodedToken) => {
+			if (decodedToken) {
+				const rooms = new Rooms(database);
+				rooms.removeUserFromChannel(decodedToken.ID, req.ID, (err) => {
+					if (!err) {
+						socket.leave(`room${req.ID}`);
+						socket.emit("remove_room", {
+							room: req.ID,
+						});
+					}
 				});
 			}
-		}
+		});
 	});
 
 	////////////////
