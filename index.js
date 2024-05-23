@@ -8,14 +8,11 @@ const io = require("socket.io")(server);
 const port = process.env.PORT || 3000;
 const Database = require("./database.js");
 const database = new Database();
-const Rooms = require("./myrooms.js");
-const OldRooms = require("./rooms.js");
-const User = require("./myusers.js");
-const OldUsers = require("./users.js").Users;
+const Rooms = require("./rooms.js");
+const User = require("./users.js");
 const Auth = require("./auth.js");
 
 // Load application config/state
-require("./basicstate.js").setup(OldUsers, OldRooms);
 
 server.listen(port, () => {
 	console.log("Server listening on port %d", port);
@@ -59,6 +56,7 @@ function authenticateUser(username, password, socket, callback) {
 				if (err) callback({ success: false, reason: "Error generating token" });
 				else {
 					socketMap[user.ID] = socket;
+					setUserState(socket, user.ID, username, true);
 					callback({ success: true, token: token });
 				}
 			});
@@ -105,13 +103,14 @@ function authenticateToken(token, callback) {
  * @param {number} userID - The ID of the user
  * @param {boolean} state - The state of the user
  */
-function setUserState(socket, userID, state) {
+function setUserState(socket, userID, username, state) {
 	const users = new User(userID, database);
 	users.setState(state, (err) => {
 		if (!err) {
 			socket.broadcast.emit("user_state_change", {
 				ID: userID,
 				active: state,
+				username: username,
 			});
 		}
 	});
@@ -121,88 +120,12 @@ function setUserState(socket, userID, state) {
 // Chatroom helper functions //
 ///////////////////////////////
 
-function sendToRoomOLD(room, event, data) {
-	io.to("room" + room.getId()).emit(event, data);
-}
-
 function sendToRoom(roomID, event, data) {
 	io.to(`room${roomID}`).emit(event, data);
 }
 
-function newRoom(name, user, options) {
-	const room = OldRooms.addRoom(name, options);
-	addUserToRoom(user, room);
-	return room;
-}
-
-function newChannel(name, description, private, user) {
-	return newRoom(name, user, {
-		description: description,
-		private: private,
-	});
-}
-
-function newDirectRoom(user_a, user_b) {
-	const room = OldRooms.addRoom(`Direct-${user_a.name}-${user_b.name}`, {
-		direct: true,
-		private: true,
-	});
-
-	addUserToRoom(user_a, room);
-	addUserToRoom(user_b, room);
-
-	return room;
-}
-
-function getDirectRoom(user_a, user_b) {
-	const rooms = OldRooms.getOldRooms().filter(
-		(r) =>
-			r.direct &&
-			((r.members[0] == user_a.name && r.members[1] == user_b.name) ||
-				(r.members[1] == user_a.name && r.members[0] == user_b.name))
-	);
-
-	if (rooms.length == 1) return rooms[0];
-	else return newDirectRoom(user_a, user_b);
-}
-
-function addUserToRoom(user, room) {
-	user.addSubscription(room);
-	room.addMember(user);
-
-	sendToRoomOLD(room, "update_user", {
-		room: room.getId(),
-		username: user,
-		action: "added",
-		members: room.getMembers(),
-	});
-}
-
-function removeUserFromRoom(user, room) {
-	user.removeSubscription(room);
-	room.removeMember(user);
-
-	sendToRoomOLD(room, "update_user", {
-		room: room.getId(),
-		username: user,
-		action: "removed",
-		members: room.getMembers(),
-	});
-}
-
 function addMessageToRoom(message) {
 	sendToRoom(message.roomID, "new message", message);
-}
-
-function setUserActiveStateOLD(socket, username, state) {
-	const user = OldUsers.getUser(username);
-
-	if (user) user.setActiveState(state);
-
-	socket.broadcast.emit("user_state_change", {
-		username: username,
-		active: state,
-	});
 }
 
 ///////////////////////////
@@ -210,9 +133,6 @@ function setUserActiveStateOLD(socket, username, state) {
 ///////////////////////////
 
 io.on("connection", (socket) => {
-	let userLoggedIn = false;
-	let username = false;
-
 	console.log("New Connection");
 
 	///////////////////////
@@ -245,7 +165,6 @@ io.on("connection", (socket) => {
 				credentials.password,
 				socket,
 				(result) => {
-					if (result.success) setUserState(socket, result.ID, true);
 					callback(result);
 				}
 			);
@@ -274,9 +193,7 @@ io.on("connection", (socket) => {
 							socket.join(`room${room.ID}`);
 							return room;
 						});
-						console.log("get-user-data", data);
 						data.rooms = rooms.filter((room) => !room.direct);
-						console.log("get-user-data", data);
 						callback({ success: true, data: data });
 					}
 				});
@@ -325,7 +242,6 @@ io.on("connection", (socket) => {
 	 */
 	socket.on("get-room", (data, callback) => {
 		authenticateToken(data.token, (err, decodedToken) => {
-			console.log("get-room", data);
 			if (err || !decodedToken) callback(err);
 			const rooms = new Rooms(database);
 			rooms.getRoom(data.room, decodedToken.ID, (err, room) => {
@@ -345,7 +261,6 @@ io.on("connection", (socket) => {
 
 	socket.on("request_direct_room", (req) => {
 		if (req.token && req.to) {
-			console.log("request_direct_room", req);
 			const auth = new Auth(database);
 			auth.verifyJWT(req.token, (err, decodedToken) => {
 				if (decodedToken) {
@@ -368,7 +283,6 @@ io.on("connection", (socket) => {
 	 * @param {Object} req - The request object containing the token and the room name, description and wether it's private or not
 	 */
 	socket.on("add_channel", (req) => {
-		console.log("add_channel", req);
 		authenticateToken(req.token, (err, decodedToken) => {
 			if (decodedToken) {
 				const rooms = new Rooms(database);
@@ -389,7 +303,6 @@ io.on("connection", (socket) => {
 									if (!room.private) {
 										rooms.getPublicRooms((err, rooms) => {
 											if (err) invalidToken(callback);
-											console.log("rooms", rooms);
 											socket.broadcast.emit("update_public_channels", {
 												publicChannels: rooms,
 											});
@@ -408,7 +321,6 @@ io.on("connection", (socket) => {
 	 * @param {Object} req - The request object containing the token and the room ID
 	 */
 	socket.on("join_channel", (req) => {
-		console.log("join_channel", req);
 		authenticateToken(req.token, (err, decodedToken) => {
 			if (decodedToken) {
 				const rooms = new Rooms(database);
@@ -435,7 +347,6 @@ io.on("connection", (socket) => {
 	 * @param {Object} req - The request object containing the token, the username of the user to add and the channel ID
 	 */
 	socket.on("add_user_to_channel", (req) => {
-		console.log("add_user_to_channel", req);
 		authenticateToken(req.token, (err, decodedToken) => {
 			if (decodedToken) {
 				const rooms = new Rooms(database);
@@ -454,9 +365,11 @@ io.on("connection", (socket) => {
 		});
 	});
 
-	// TODO: Refactor this
+	/**
+	 * @param {Object} req - The request object containing the token and the channel ID
+	 
+	 */
 	socket.on("leave_channel", (req) => {
-		console.log("leave_channel", req);
 		authenticateToken(req.token, (err, decodedToken) => {
 			if (decodedToken) {
 				const rooms = new Rooms(database);
@@ -470,7 +383,6 @@ io.on("connection", (socket) => {
 									action: "removed",
 									members: members,
 								});
-								console.log("bced update user");
 								socket.leave(`room${req.ID}`);
 								socket.emit("remove_room", {
 									room: req.ID,
@@ -487,19 +399,37 @@ io.on("connection", (socket) => {
 	// reconnects //
 	////////////////
 
-	// TODO: Refactor this
+	// Not 100% sure when this is triggered
 	socket.on("reconnect", () => {
 		console.log("reconnect");
-		if (userLoggedIn) setUserActiveStateOLD(socket, username, true);
+		const userID = Object.keys(socketMap).find(
+			(userID) => socketMap[userID] === socket
+		);
+		const user = new User(userID, database);
+		user.getUser(userID, (err, user) => {
+			if (!err) {
+				setUserState(socket, userID, user.username, true);
+			}
+		});
 	});
 
 	/////////////////
 	// disconnects //
 	/////////////////
 
-	// TODO: Refactor this
 	socket.on("disconnect", () => {
 		console.log("disconnect");
-		if (userLoggedIn) setUserActiveStateOLD(socket, username, false);
+		const userID = Object.keys(socketMap).find(
+			(userID) => socketMap[userID] === socket
+		);
+		if (userID) {
+			const user = new User(userID, database);
+			user.getUser((err, user) => {
+				if (!err) {
+					setUserState(socket, userID, user.username, false);
+					delete socketMap[userID];
+				}
+			});
+		}
 	});
 });

@@ -1,46 +1,30 @@
-const users = {};
+const Database = require("./database.js");
+const Rooms = require("./rooms.js");
 
 class User {
-	constructor(name) {
-		this.name = name;
-		this.active = false;
-		this.subscriptions = [];
+	#database;
+	userID;
+	constructor(userID, database = new Database()) {
+		this.#database = database;
+		this.userID = userID;
 	}
 
-	getSubscriptions() {
-		return this.subscriptions;
+	getUserData(callback) {
+		this.#database.getUserData(this.userID, callback);
 	}
 
-	addSubscription(room) {
-		const id = room.getId();
-
-		if (this.subscriptions.indexOf(id) === -1) this.subscriptions.push(id);
+	getUser(callback) {
+		this.#database.getUserByID(this.userID, callback);
 	}
 
-	removeSubscription(room) {
-		const id = room.getId();
-
-		const idx = this.subscriptions.indexOf(id);
-		if (idx >= 0) this.subscriptions.splice(idx, 1);
+	setState(state, callback) {
+		if (state) this.#database.setUserActiveState(this.userID, 1, callback);
+		else this.#database.setUserActiveState(this.userID, 0, callback);
 	}
 
-	setActiveState(b) {
-		this.active = b;
+	joinChannel(RoomID, callback) {
+		this.#database.addUserToChannel(this.userID, RoomID, callback);
 	}
 }
 
-module.exports = {
-	addUser: (name) => {
-		const user = new User(name);
-		users[name] = user;
-		return user;
-	},
-
-	getUser: (name) => {
-		return users[name];
-	},
-
-	getUsers: () => {
-		return Object.values(users);
-	},
-};
+module.exports = User;

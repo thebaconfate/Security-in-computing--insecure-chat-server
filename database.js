@@ -40,7 +40,6 @@ class Database {
 		query.run([username, password], function (err) {
 			if (err) callback(err);
 			const userID = this.lastID;
-			console.log("User ID:", userID);
 			registerGeneral.run([userID]);
 			registerRandom.run([userID]);
 			registerPrivate.run([userID]);
@@ -56,8 +55,10 @@ class Database {
 
 	getUserByID(userID, callback) {
 		const query = this.#db.prepare("SELECT * FROM users WHERE ID = ?");
-		query.get([userID], callback);
-		query.finalize();
+		query.get([userID], function (err, row) {
+			query.finalize();
+			callback(err, row);
+		});
 	}
 
 	getUserData(userID, callback) {
@@ -96,8 +97,10 @@ class Database {
 
 	setUserActiveState(userID, active, callback) {
 		const query = this.#db.prepare("UPDATE users SET active = ? WHERE ID = ?");
-		query.run([active, userID], callback);
-		query.finalize();
+		query.run([active, userID], function (err) {
+			query.finalize();
+			callback(err);
+		});
 	}
 
 	getMembersCount(roomID, callback) {
@@ -137,7 +140,6 @@ class Database {
 			if (err || !count) callback(err, count);
 			else {
 				room.members = count;
-				console.log("room", room);
 				this.getChatroomMessages(room.ID, function (err, messages) {
 					preCallback(err, messages, room);
 				});
@@ -151,7 +153,6 @@ class Database {
 				});
 		};
 		chatroom.get([roomID, userID], function (err, room) {
-			console.log("room", room);
 			getRoomCallback(err, room);
 		});
 	}
@@ -266,7 +267,6 @@ class Database {
 			"INSERT INTO members (user_ID, room_ID) VALUES (?, ?)"
 		);
 		query.run([userID, roomID], function (err) {
-			console.log("added user to channel");
 			callback(err);
 		});
 		query.finalize();
@@ -283,7 +283,6 @@ class Database {
 
 	addUserToPublicChannel(userID, roomID, callback) {
 		this.getRoomByID(roomID, (err, room) => {
-			console.log("got room by id:", room);
 			if (err || !room) callback(err, room);
 			else if (room.private) callback("Room is private", null);
 			else {

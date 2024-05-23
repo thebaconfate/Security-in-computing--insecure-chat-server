@@ -1,68 +1,80 @@
-const rooms = [];
-let roomIdCounter = 0;
+const Database = require("./database.js");
 
-class Room {
-	constructor(id, name, options) {
-		this.id = id;
-		this.name = name;
-
-		this.description = options.description || "";
-
-		this.forceMembership = !!options.forceMembership;
-		this.private = !!options.private;
-		this.direct = !!options.direct;
-
-		this.members = [];
-		this.history = [];
+class Rooms {
+	#database;
+	constructor(database = new Database()) {
+		this.#database = database;
 	}
 
-	getId() {
-		return this.id;
+	getRoom(roomID, userID, callback) {
+		this.#database.getRoom(roomID, userID, callback);
 	}
 
-	getMembers() {
-		return this.members;
+	sendMessage(roomID, userID, message, callback) {
+		this.#database.sendMessageToRoom(roomID, userID, message, callback);
 	}
 
-	getMemberCount() {
-		return this.members.length;
+	createDirectRoom(userID, otherUserId, callback) {
+		this.#database.createDirectRoom(userID, otherUserId, callback);
 	}
 
-	addMember(user) {
-		if (this.members.indexOf(user.name) === -1) this.members.push(user.name);
+	getDirectRoom(userID, otherUserId, callback) {
+		this.#database.getDirectRoom(userID, otherUserId, (err, room) => {
+			if (err || room) {
+				console.log("room", room);
+				callback(err, room);
+			} else {
+				this.#database.createDirectRoom(userID, otherUserId, (err, lastID) => {
+					if (err) callback(err, room);
+					else this.#database.getDirectRoomByID(lastID, callback);
+				});
+			}
+		});
 	}
 
-	removeMember(user) {
-		const idx = this.members.indexOf(user.name);
-		if (idx >= 0) this.members.splice(idx, 1);
+	createRoom(name, description, isPrivate, callback) {
+		this.#database.createRoom(name, description, isPrivate, (err, lastID) => {
+			if (err) callback(err, null);
+			else this.#database.getRoomByID(lastID, callback);
+		});
 	}
 
-	getHistory() {
-		return this.history;
+	getPublicRooms(callback) {
+		this.#database.getPublicRooms(callback);
 	}
 
-	addMessage(msg) {
-		this.history.push(msg);
+	addUserToPublicChannel(userID, roomID, callback) {
+		this.#database.addUserToPublicChannel(userID, roomID, (err) => {
+			if (err) callback(err, null);
+			else {
+				console.log("added user to channel, getting room");
+				this.#database.getRoom(roomID, userID, callback);
+			}
+		});
+	}
+
+	addUserToChannel(username, channelID, callback) {
+		this.#database.getUserByUsername(username, (err, user) => {
+			if (err || !user) callback("User not found", null, null);
+			else {
+				this.#database.addUserToChannel(user.ID, channelID, (err) => {
+					if (err) callback(err, null, null);
+					else
+						this.#database.getRoom(channelID, user.ID, (err, room) => {
+							callback(err, user.ID, room);
+						});
+				});
+			}
+		});
+	}
+
+	removeUserFromChannel(userID, roomID, callback) {
+		this.#database.removeUserFromChannel(userID, roomID, callback);
+	}
+
+	getMembers(roomID, callback) {
+		this.#database.getMembersCount(roomID, callback);
 	}
 }
 
-module.exports = {
-	addRoom: (name, options) => {
-		const id = roomIdCounter++;
-		const room = new Room(id, name, options);
-		rooms[id] = room;
-		return room;
-	},
-
-	getRooms: () => {
-		return rooms;
-	},
-
-	getForcedRooms: () => {
-		return rooms.filter((r) => r.forceMembership);
-	},
-
-	getRoom: (id) => {
-		return rooms[id];
-	},
-};
+module.exports = Rooms;
