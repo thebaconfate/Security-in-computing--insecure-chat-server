@@ -226,6 +226,7 @@ io.on("connection", (socket) => {
 			if (!req.message?.content)
 				callback({ success: false, reason: "No message supplied" });
 			const room = new Rooms(database);
+			console.log(req);
 			room.sendMessage(
 				req.message.room,
 				decodedToken.ID,

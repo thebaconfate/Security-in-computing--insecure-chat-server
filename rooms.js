@@ -23,7 +23,10 @@ class Rooms {
 			roomID,
 			userID,
 			Buffer.from(message, "utf-8"),
-			callback
+			(err, message) => {
+				if (message) message.content = message.content.toString("utf-8");
+				callback(err, message);
+			}
 		);
 	}
 
