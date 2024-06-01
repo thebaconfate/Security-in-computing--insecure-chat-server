@@ -7,11 +7,24 @@ class Rooms {
 	}
 
 	getRoom(roomID, userID, callback) {
-		this.#database.getRoom(roomID, userID, callback);
+		this.#database.getRoom(roomID, userID, (err, room) => {
+			if (room)
+				room.history = room.history.map((msg) => {
+					msg.content = msg.content.toString("utf-8");
+					return msg;
+				});
+			console.log(room);
+			callback(err, room);
+		});
 	}
 
 	sendMessage(roomID, userID, message, callback) {
-		this.#database.sendMessageToRoom(roomID, userID, message, callback);
+		this.#database.sendMessageToRoom(
+			roomID,
+			userID,
+			Buffer.from(message, "utf-8"),
+			callback
+		);
 	}
 
 	createDirectRoom(userID, otherUserId, callback) {

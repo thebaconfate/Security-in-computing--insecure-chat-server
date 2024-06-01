@@ -29,9 +29,9 @@ const socketMap = {};
  * @param {string} password - The password of the user to create
  * @param {Function} callback - The callback function to call when the user is created, or an error is encountered
  */
-function createUser(username, password, callback) {
+function createUser(username, password, publicKey, callback) {
 	const auth = new Auth(database);
-	auth.registerUser(username, password, (err) => {
+	auth.registerUser(username, password, publicKey, (err) => {
 		if (err) {
 			callback({ success: false, reason: "User already exists" });
 		} else {
@@ -57,7 +57,7 @@ function authenticateUser(username, password, socket, callback) {
 				else {
 					socketMap[user.ID] = socket;
 					setUserState(socket, user.ID, username, true);
-					callback({ success: true, token: token });
+					callback({ success: true, token: token, publicKey: user.publicKey });
 				}
 			});
 	});
@@ -140,14 +140,23 @@ io.on("connection", (socket) => {
 	///////////////////////
 
 	socket.on("register", (credentials, callback) => {
-		if (!credentials.username || !credentials.password) {
+		if (
+			!credentials.username ||
+			!credentials.password ||
+			!credentials.publicKey
+		) {
 			callback({ success: false, reason: "Invalid username or password" });
 			socket.disconnect(true);
 		} else {
-			createUser(credentials.username, credentials.password, (response) => {
-				callback(response);
-				socket.disconnect(true);
-			});
+			createUser(
+				credentials.username,
+				credentials.password,
+				credentials.publicKey,
+				(response) => {
+					callback(response);
+					socket.disconnect(true);
+				}
+			);
 		}
 	});
 

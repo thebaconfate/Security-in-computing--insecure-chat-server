@@ -11,9 +11,14 @@ class Auth {
 		this.#database = database;
 	}
 
-	registerUser(username, password, callback) {
+	registerUser(username, password, publicKey, callback) {
 		const hash = bcrypt.hashSync(password, this.#salt);
-		this.#database.registerUser(username, hash, callback);
+		this.#database.registerUser(
+			username,
+			Buffer.from(hash, "utf-8"),
+			Buffer.from(publicKey, "utf-8"),
+			callback
+		);
 	}
 
 	authenticateUser(username, password, callback) {
@@ -27,9 +32,13 @@ class Auth {
 						err?.message || "User not found"
 					);
 					callback(err, row);
-				} else if (bcrypt.compareSync(password, row.password)) {
+				} else if (
+					bcrypt.compareSync(password, row.password.toString("utf-8"))
+				) {
 					console.log("User authenticated:", row);
-
+					row.publicKey = row.public_key.toString("utf-8");
+					delete row.password;
+					delete row.public_key;
 					callback(err, row);
 				} else {
 					callback({ success: false, reason: "Invalid password" }, null);

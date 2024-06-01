@@ -18,9 +18,9 @@ class Database {
 		};
 	}
 
-	registerUser(username, password, callback) {
+	registerUser(username, password, publicKey, callback) {
 		const query = this.#db.prepare(
-			"INSERT INTO users (username, password) VALUES (?, ?)"
+			"INSERT INTO users (username, password, public_key) VALUES (?, ?, ?)"
 		);
 		const registerGeneral = this.#db.prepare(
 			"INSERT INTO members (user_ID, room_ID) VALUES (?, 1)"
@@ -37,7 +37,7 @@ class Database {
 			registerRandom,
 			registerPrivate,
 		]);
-		query.run([username, password], function (err) {
+		query.run([username, password, publicKey], function (err) {
 			if (err) callback(err);
 			const userID = this.lastID;
 			registerGeneral.run([userID]);

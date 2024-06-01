@@ -15,11 +15,7 @@ const db = new sqlite.Database("./database.db", (err) => {
 db.serialize(() => {
 	/*Creates the users table*/
 	db.run(
-		"CREATE TABLE IF NOT EXISTS users (ID INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR(255) NOT NULL UNIQUE, password BLOB NOT NULL, active BOOLEAN NOT NULL DEFAULT FALSE)"
-	);
-	const password = bcrypt.hashSync("admin", 10);
-	db.run(
-		`INSERT OR IGNORE INTO users (ID, username, password) VALUES (1, 'admin', '${password}')`
+		"CREATE TABLE IF NOT EXISTS users (ID INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR(255) NOT NULL UNIQUE, password BLOB NOT NULL, active BOOLEAN NOT NULL DEFAULT FALSE, public_key BLOB NOT NULL)"
 	);
 });
 
@@ -47,15 +43,12 @@ db.serialize(() => {
 	db.run(
 		"CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_membership ON members (user_ID, room_ID)"
 	);
-	db.run("INSERT OR IGNORE INTO members (user_ID, room_ID) VALUES (1, 1)");
-	db.run("INSERT OR IGNORE INTO members (user_ID, room_ID) VALUES (1, 2)");
-	db.run("INSERT OR IGNORE INTO members (user_ID, room_ID) VALUES (1, 3)");
 });
 
 db.serialize(() => {
 	// Creates the chatmessages table, this stores the messages sent in rooms
 	db.run(
-		"CREATE TABLE IF NOT EXISTS messages (ID INTEGER PRIMARY KEY AUTOINCREMENT, room_ID INTEGER NOT NULL, sender_ID INTEGER NOT NULL, content TEXT NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(room_ID) REFERENCES rooms(ID), FOREIGN KEY(sender_ID) REFERENCES users(ID))"
+		"CREATE TABLE IF NOT EXISTS messages (ID INTEGER PRIMARY KEY AUTOINCREMENT, room_ID INTEGER NOT NULL, sender_ID INTEGER NOT NULL, content BLOB NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(room_ID) REFERENCES rooms(ID), FOREIGN KEY(sender_ID) REFERENCES users(ID))"
 	);
 });
 
