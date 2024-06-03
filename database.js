@@ -127,6 +127,14 @@ class Database {
 		query.finalize();
 	}
 
+	getEncryptedChatRoomMessages(roomID, userID, callback) {
+		const query = this.#db.prepare(
+			"SELECT messages.ID, messages.sender_ID, users.username, messages.content, messages.timestamp, keys.key as decryptionKey FROM messages INNER JOIN rooms ON messages.room_ID = rooms.ID LEFT JOIN users ON messages.sender_ID = users.ID LEFT JOIN keys on messages.ID = message_ID WHERE rooms.ID = ? AND keys.recipient_ID = ? ORDER BY messages.timestamp"
+		);
+		query.all([roomID, userID], callback);
+		query.finalize();
+	}
+
 	getRoom(roomID, userID, callback) {
 		const chatroom = this.#db.prepare(
 			"SELECT rooms.ID, rooms.name, rooms.description, rooms.private, rooms.direct FROM rooms LEFT JOIN members ON rooms.ID = members.room_ID WHERE members.room_ID = ? AND members.user_ID = ?"
@@ -142,9 +150,19 @@ class Database {
 			if (err || !count) callback(err, count);
 			else {
 				room.members = count;
-				this.getChatroomMessages(room.ID, function (err, messages) {
-					preCallback(err, messages, room);
-				});
+				if (room.direct || room.private) {
+					this.getEncryptedChatRoomMessages(
+						room.ID,
+						userID,
+						function (err, messages) {
+							preCallback(err, messages, room);
+						}
+					);
+				} else {
+					this.getChatroomMessages(room.ID, function (err, messages) {
+						preCallback(err, messages, room);
+					});
+				}
 			}
 		};
 		const getRoomCallback = (err, room) => {

@@ -142,7 +142,6 @@ function addMessageToRoom(message) {
 ///////////////////////////
 
 io.on("connection", (socket) => {
-
 	///////////////////////
 	// user registration //
 	///////////////////////
@@ -385,9 +384,13 @@ io.on("connection", (socket) => {
 							socketMap[userID].join(`room${room.ID}`);
 							socketMap[userID].emit("update_room", {
 								room: room,
-								moveto: true,
+								moveto: false,
 							});
 						}
+						socket.emit("update_room", {
+							room: room,
+							moveto: true,
+						});
 					}
 				});
 			}
