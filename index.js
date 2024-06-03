@@ -11,6 +11,7 @@ const database = new Database();
 const Rooms = require("./rooms.js");
 const User = require("./users.js");
 const Auth = require("./auth.js");
+const Keys = require("./keys.js");
 
 // Load application config/state
 
@@ -57,7 +58,12 @@ function authenticateUser(username, password, socket, callback) {
 				else {
 					socketMap[user.ID] = socket;
 					setUserState(socket, user.ID, username, true);
-					callback({ success: true, token: token, publicKey: user.publicKey });
+					callback({
+						success: true,
+						token: token,
+						publicKey: user.publicKey,
+						ID: user.ID,
+					});
 				}
 			});
 	});
@@ -116,6 +122,9 @@ function setUserState(socket, userID, username, state) {
 	});
 }
 
+function joinRoom(socket, roomID) {
+	socket.join(`room${roomID}`);
+}
 ///////////////////////////////
 // Chatroom helper functions //
 ///////////////////////////////
@@ -133,7 +142,6 @@ function addMessageToRoom(message) {
 ///////////////////////////
 
 io.on("connection", (socket) => {
-	console.log("New Connection");
 
 	///////////////////////
 	// user registration //
@@ -195,16 +203,22 @@ io.on("connection", (socket) => {
 			if (err || !decodedToken) callback(err);
 			else {
 				const user = new User(decodedToken.ID, database);
-				user.getUserData((err, data) => {
+				const joinRoomAndReturnRoom = (room) => {
+					joinRoom(socket, room.ID);
+					return room;
+				};
+				const filterDirectRooms = (room) => !room.direct;
+				const joinRoomsAndSendData = (data) => {
+					const rooms = data.rooms.map(joinRoomAndReturnRoom);
+					data.rooms = rooms.filter(filterDirectRooms);
+					callback({ success: true, data: data });
+				};
+				const handleResult = (err, data) => {
 					if (err || !data) invalidToken(callback);
-					else {
-						const rooms = data.rooms.map((room) => {
-							socket.join(`room${room.ID}`);
-							return room;
-						});
-						data.rooms = rooms.filter((room) => !room.direct);
-						callback({ success: true, data: data });
-					}
+					else joinRoomsAndSendData(data);
+				};
+				user.getUserData((err, data) => {
+					handleResult(err, data);
 				});
 			}
 		});
@@ -226,7 +240,6 @@ io.on("connection", (socket) => {
 			if (!req.message?.content)
 				callback({ success: false, reason: "No message supplied" });
 			const room = new Rooms(database);
-			console.log(req);
 			room.sendMessage(
 				req.message.room,
 				decodedToken.ID,
@@ -234,6 +247,12 @@ io.on("connection", (socket) => {
 				(err, message) => {
 					if (err) invalidToken(callback);
 					else {
+						if (req.decryptionKeys) {
+							const keys = new Keys(database);
+							keys.saveKeys(req.message.room, message.ID, req.decryptionKeys);
+							message.decryptionKeys = req.decryptionKeys;
+						}
+						console.log("message", message);
 						addMessageToRoom(message);
 						callback({ success: true });
 					}
@@ -277,7 +296,7 @@ io.on("connection", (socket) => {
 					const rooms = new Rooms(database);
 					rooms.getDirectRoom(decodedToken.ID, req.to, (err, room) => {
 						if (err) invalidToken(callback);
-						socket.join(`room${room.ID}`);
+						joinRoom(socket, room.ID);
 						if (socketMap[req.to]) socketMap[req.to].join(`room${room.ID}`);
 						socket.emit("update_room", {
 							room: room,
@@ -411,7 +430,6 @@ io.on("connection", (socket) => {
 
 	// Not 100% sure when this is triggered
 	socket.on("reconnect", () => {
-		console.log("reconnect");
 		const userID = Object.keys(socketMap).find(
 			(userID) => socketMap[userID] === socket
 		);
@@ -428,7 +446,6 @@ io.on("connection", (socket) => {
 	/////////////////
 
 	socket.on("disconnect", () => {
-		console.log("disconnect");
 		const userID = Object.keys(socketMap).find(
 			(userID) => socketMap[userID] === socket
 		);

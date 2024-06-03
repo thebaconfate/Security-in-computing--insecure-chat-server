@@ -48,7 +48,9 @@ class Database {
 	}
 
 	getUserByUsername(username, callback) {
-		const query = this.#db.prepare("SELECT * FROM users WHERE username = ?");
+		const query = this.#db.prepare(
+			"SELECT ID, username, password, active, public_key as publicKey FROM users WHERE username = ?"
+		);
 		query.get([username], callback);
 		query.finalize();
 	}
@@ -63,7 +65,7 @@ class Database {
 
 	getUserData(userID, callback) {
 		const userListQuery = this.#db.prepare(
-			"SELECT ID, username, active FROM users where ID != ? ORDER BY ID"
+			"SELECT ID, username, active, public_key as publicKey FROM users where ID != ? ORDER BY ID"
 		);
 		const chatRoomListQuery = this.#db.prepare(
 			"SELECT rooms.ID, rooms.name, rooms.private, rooms.direct FROM rooms INNER JOIN members ON rooms.ID = members.room_ID AND members.user_ID = ? ORDER BY rooms.ID"
@@ -298,6 +300,14 @@ class Database {
 		query.run([userID, roomID], function (err) {
 			callback(err);
 		});
+		query.finalize();
+	}
+
+	saveKey(roomID, messageID, key, recipientID) {
+		const query = this.#db.prepare(
+			"INSERT INTO keys (room_ID, message_ID, key, recipient_ID) VALUES (?, ?, ?, ?)"
+		);
+		query.run([roomID, messageID, key, recipientID]);
 		query.finalize();
 	}
 }

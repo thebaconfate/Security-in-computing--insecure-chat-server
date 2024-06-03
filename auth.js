@@ -36,9 +36,8 @@ class Auth {
 					bcrypt.compareSync(password, row.password.toString("utf-8"))
 				) {
 					console.log("User authenticated:", row);
-					row.publicKey = row.public_key.toString("utf-8");
+					row.publicKey = row.publicKey.toString("utf-8");
 					delete row.password;
-					delete row.public_key;
 					callback(err, row);
 				} else {
 					callback({ success: false, reason: "Invalid password" }, null);

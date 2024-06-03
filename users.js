@@ -10,7 +10,16 @@ class User {
 	}
 
 	getUserData(callback) {
-		this.#database.getUserData(this.userID, callback);
+		this.#database.getUserData(this.userID, (err, data) => {
+			if (!err) {
+				console.log("user-data", data);
+				data.users = data.users.map((user) => {
+					user.publicKey = user.publicKey.toString("utf-8");
+					return user;
+				});
+				callback(err, data);
+			}
+		});
 	}
 
 	getUser(callback) {

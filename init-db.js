@@ -52,4 +52,10 @@ db.serialize(() => {
 	);
 });
 
+db.serialize(() => {
+	db.run(
+		"CREATE TABLE IF NOT EXISTS keys (room_ID INTEGER NOT NULL, message_ID INTEGER NOT NULL, key BLOB NOT NULL, recipient_ID INTEGER NOT NULL, FOREIGN KEY(room_ID) REFERENCES rooms(ID), FOREIGN KEY(message_ID) REFERENCES messages(ID), FOREIGN KEY(recipient_ID) REFERENCES users(ID))"
+	);
+});
+
 db.close();

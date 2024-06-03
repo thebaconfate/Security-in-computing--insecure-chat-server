@@ -22,11 +22,8 @@ class Rooms {
 		this.#database.sendMessageToRoom(
 			roomID,
 			userID,
-			Buffer.from(message, "utf-8"),
-			(err, message) => {
-				if (message) message.content = message.content.toString("utf-8");
-				callback(err, message);
-			}
+			message,
+			callback
 		);
 	}
 
@@ -37,7 +34,6 @@ class Rooms {
 	getDirectRoom(userID, otherUserId, callback) {
 		this.#database.getDirectRoom(userID, otherUserId, (err, room) => {
 			if (err || room) {
-				console.log("room", room);
 				callback(err, room);
 			} else {
 				this.#database.createDirectRoom(userID, otherUserId, (err, lastID) => {
