@@ -12,6 +12,21 @@ const Rooms = require("./rooms.js");
 const User = require("./users.js");
 const Auth = require("./auth.js");
 const Keys = require("./keys.js");
+const { exec } = require("child_process");
+
+exec("node init-db.js", (error, stdout, stderr) => {
+	if (error) {
+		console.error(`Error executing script: ${error.message}`);
+		return;
+	}
+
+	if (stderr) {
+		console.error(`stderr: ${stderr}`);
+		return;
+	}
+
+	console.log(`initialized database if not yet initialized`);
+});
 
 // Load application config/state
 
@@ -137,6 +152,13 @@ function addMessageToRoom(message) {
 	sendToRoom(message.roomID, "new message", message);
 }
 
+function broadCastRegistry(socket, username, callback) {
+	const user = new User(null, database);
+	user.getUserByUsername(username, (err, user) => {
+		if (user) socket.broadcast.emit("new-user", user);
+		callback();
+	});
+}
 ///////////////////////////
 // IO connection handler //
 ///////////////////////////
@@ -160,8 +182,10 @@ io.on("connection", (socket) => {
 				credentials.password,
 				credentials.publicKey,
 				(response) => {
-					callback(response);
-					socket.disconnect(true);
+					broadCastRegistry(socket, credentials.username, () => {
+						callback(response);
+						socket.disconnect(true);
+					});
 				}
 			);
 		}
@@ -251,7 +275,6 @@ io.on("connection", (socket) => {
 							keys.saveKeys(req.message.room, message.ID, req.decryptionKeys);
 							message.decryptionKeys = req.decryptionKeys;
 						}
-						console.log("message", message);
 						addMessageToRoom(message);
 						callback({ success: true });
 					}

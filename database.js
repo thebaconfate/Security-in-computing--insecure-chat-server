@@ -39,11 +39,13 @@ class Database {
 		]);
 		query.run([username, password, publicKey], function (err) {
 			if (err) callback(err);
-			const userID = this.lastID;
-			registerGeneral.run([userID]);
-			registerRandom.run([userID]);
-			registerPrivate.run([userID]);
-			finalize(() => callback(err));
+			if (!err) {
+				const userID = this.lastID;
+				registerGeneral.run([userID]);
+				registerRandom.run([userID]);
+				registerPrivate.run([userID]);
+				finalize(() => callback(err));
+			}
 		});
 	}
 

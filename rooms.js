@@ -46,7 +46,6 @@ class Rooms {
 		this.#database.addUserToPublicChannel(userID, roomID, (err) => {
 			if (err) callback(err, null);
 			else {
-				console.log("added user to channel, getting room");
 				this.#database.getRoom(roomID, userID, callback);
 			}
 		});

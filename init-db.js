@@ -5,11 +5,7 @@ This file is only to be used for initializing the database
 const bcrypt = require("bcrypt");
 const sqlite = require("sqlite3").verbose();
 const db = new sqlite.Database("./database.db", (err) => {
-	if (err) {
-		console.error("Error opening database:", err.message);
-	} else {
-		console.log("Connected to the database.");
-	}
+	if (err) console.error("Error opening database:", err.message);
 });
 
 db.serialize(() => {
