@@ -163,6 +163,13 @@ function broadCastRegistry(socket, username, callback) {
 		callback();
 	});
 }
+function broadCastRegistry(socket, username, callback) {
+	const user = new User(null, database);
+	user.getUserByUsername(username, (err, user) => {
+		if (user) socket.broadcast.emit("new-user", user);
+		callback();
+	});
+}
 ///////////////////////////
 // IO connection handler //
 ///////////////////////////
@@ -186,6 +193,10 @@ io.on("connection", (socket) => {
 				credentials.password,
 				credentials.publicKey,
 				(response) => {
+					broadCastRegistry(socket, credentials.username, () => {
+						callback(response);
+						socket.disconnect(true);
+					});
 					broadCastRegistry(socket, credentials.username, () => {
 						callback(response);
 						socket.disconnect(true);
