@@ -39,11 +39,13 @@ class Database {
 		]);
 		query.run([username, password, publicKey], function (err) {
 			if (err) callback(err);
-			const userID = this.lastID;
-			registerGeneral.run([userID]);
-			registerRandom.run([userID]);
-			registerPrivate.run([userID]);
-			finalize(() => callback(err));
+			if (!err) {
+				const userID = this.lastID;
+				registerGeneral.run([userID]);
+				registerRandom.run([userID]);
+				registerPrivate.run([userID]);
+				finalize(() => callback(err));
+			}
 		});
 	}
 
@@ -327,6 +329,15 @@ class Database {
 		);
 		query.run([roomID, messageID, key, recipientID]);
 		query.finalize();
+	}
+
+	getMemberPublicKeys(roomID, callback) {
+		const query = this.#db.prepare(
+			"SELECT users.ID, users.public_key as publicKey FROM members INNER JOIN users ON members.user_ID = users.ID WHERE members.room_ID = ?"
+		);
+		query.all([roomID], function (err, rows) {
+			callback(err, rows);
+		});
 	}
 }
 

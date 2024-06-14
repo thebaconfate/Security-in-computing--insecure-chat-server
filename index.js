@@ -12,9 +12,27 @@ const Rooms = require("./rooms.js");
 const User = require("./users.js");
 const Auth = require("./auth.js");
 const Keys = require("./keys.js");
+const ServerCrypto = require("./server-crypto.js");
+const { exec } = require("child_process");
+
+exec("node init-db.js", (error, stdout, stderr) => {
+	if (error) {
+		console.error(`Error executing script: ${error.message}`);
+		return;
+	}
+
+	if (stderr) {
+		console.error(`stderr: ${stderr}`);
+		return;
+	}
+
+	console.log(`initialized database if not yet initialized`);
+});
 
 // Load application config/state
 
+const privateKey = ServerCrypto.getPrivateKey();
+const publicKey = ServerCrypto.getPublicKey();
 server.listen(port, () => {
 	console.log("Server listening on port %d", port);
 });
@@ -63,6 +81,7 @@ function authenticateUser(username, password, socket, callback) {
 						token: token,
 						publicKey: user.publicKey,
 						ID: user.ID,
+						serverPublicKey: publicKey,
 					});
 				}
 			});
@@ -137,6 +156,13 @@ function addMessageToRoom(message) {
 	sendToRoom(message.roomID, "new message", message);
 }
 
+function broadCastRegistry(socket, username, callback) {
+	const user = new User(null, database);
+	user.getUserByUsername(username, (err, user) => {
+		if (user) socket.broadcast.emit("new-user", user);
+		callback();
+	});
+}
 ///////////////////////////
 // IO connection handler //
 ///////////////////////////
@@ -160,8 +186,10 @@ io.on("connection", (socket) => {
 				credentials.password,
 				credentials.publicKey,
 				(response) => {
-					callback(response);
-					socket.disconnect(true);
+					broadCastRegistry(socket, credentials.username, () => {
+						callback(response);
+						socket.disconnect(true);
+					});
 				}
 			);
 		}
@@ -239,21 +267,42 @@ io.on("connection", (socket) => {
 			if (!req.message?.content)
 				callback({ success: false, reason: "No message supplied" });
 			const room = new Rooms(database);
+			console.log("send-message", req.message);
+			if (!req.message?.decryptionKeys)
+				req.message.content = ServerCrypto.decryptWithPrivateKey(
+					privateKey,
+					req.message.content
+				);
 			room.sendMessage(
 				req.message.room,
 				decodedToken.ID,
 				req.message.content,
 				(err, message) => {
 					if (err) invalidToken(callback);
-					else {
-						if (req.decryptionKeys) {
-							const keys = new Keys(database);
-							keys.saveKeys(req.message.room, message.ID, req.decryptionKeys);
-							message.decryptionKeys = req.decryptionKeys;
-						}
-						console.log("message", message);
+					if (req.decryptionKeys) {
+						const keys = new Keys(database);
+						keys.saveKeys(req.message.room, message.ID, req.decryptionKeys);
+						message.decryptionKeys = req.decryptionKeys;
 						addMessageToRoom(message);
 						callback({ success: true });
+					} else {
+						const aesKey = ServerCrypto.generateAesKey();
+						message.content = ServerCrypto.encryptMessage(
+							message.content,
+							aesKey
+						);
+						room.getMemberPublicKeys(req.message.room, (err, users) => {
+							if (!err) {
+								message.decryptionKeys = users.map((user) => {
+									return {
+										ID: user.ID,
+										key: ServerCrypto.encryptAesKey(aesKey, user.publicKey),
+									};
+								});
+							}
+							addMessageToRoom(message);
+							callback({ success: true });
+						});
 					}
 				}
 			);

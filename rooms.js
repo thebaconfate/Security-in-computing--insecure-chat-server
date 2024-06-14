@@ -1,4 +1,5 @@
 const Database = require("./database.js");
+const ServerCrypto = require("./server-crypto.js");
 
 class Rooms {
 	#database;
@@ -7,7 +8,11 @@ class Rooms {
 	}
 
 	getRoom(roomID, userID, callback) {
-		this.#database.getRoom(roomID, userID, callback);
+		this.#database.getRoom(roomID, userID, (err, room) => {
+			if (err || !room) callback(err, null);
+			console.log(room.history[0].decryptionKey);
+			callback(err, room);
+		});
 	}
 
 	sendMessage(roomID, userID, message, callback) {
@@ -46,7 +51,6 @@ class Rooms {
 		this.#database.addUserToPublicChannel(userID, roomID, (err) => {
 			if (err) callback(err, null);
 			else {
-				console.log("added user to channel, getting room");
 				this.#database.getRoom(roomID, userID, callback);
 			}
 		});
@@ -73,6 +77,10 @@ class Rooms {
 
 	getMembers(roomID, callback) {
 		this.#database.getMembersCount(roomID, callback);
+	}
+
+	getMemberPublicKeys(roomID, callback) {
+		this.#database.getMemberPublicKeys(roomID, callback);
 	}
 }
 

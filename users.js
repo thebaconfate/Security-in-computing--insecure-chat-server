@@ -12,7 +12,6 @@ class User {
 	getUserData(callback) {
 		this.#database.getUserData(this.userID, (err, data) => {
 			if (!err) {
-				console.log("user-data", data);
 				data.users = data.users.map((user) => {
 					user.publicKey = user.publicKey.toString("utf-8");
 					return user;
@@ -33,6 +32,13 @@ class User {
 
 	joinChannel(RoomID, callback) {
 		this.#database.addUserToChannel(this.userID, RoomID, callback);
+	}
+
+	getUserByUsername(username, callback) {
+		this.#database.getUserByUsername(username, (err, user) => {
+			if (!err) delete user.password;
+			callback(err, user);
+		});
 	}
 }
 

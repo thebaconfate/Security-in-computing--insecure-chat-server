@@ -22,8 +22,7 @@ class Auth {
 	}
 
 	authenticateUser(username, password, callback) {
-		console.log(this.#database);
-		this.#database.getUserByUsername(
+		this.#database.getUserByUsername( 
 			username,
 			function (err, row) {
 				if (err || !row) {
@@ -35,7 +34,7 @@ class Auth {
 				} else if (
 					bcrypt.compareSync(password, row.password.toString("utf-8"))
 				) {
-					console.log("User authenticated:", row);
+					console.log("User authenticated");
 					row.publicKey = row.publicKey.toString("utf-8");
 					delete row.password;
 					callback(err, row);
@@ -48,7 +47,6 @@ class Auth {
 	}
 
 	generateJWT(userID, username, callback) {
-		console.log(userID, username);
 		jwt.sign(
 			{
 				ID: userID,
