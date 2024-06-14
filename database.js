@@ -58,7 +58,9 @@ class Database {
 	}
 
 	getUserByID(userID, callback) {
-		const query = this.#db.prepare("SELECT * FROM users WHERE ID = ?");
+		const query = this.#db.prepare(
+			"SELECT ID, username, active, public_key as publicKey FROM users WHERE ID = ?"
+		);
 		query.get([userID], function (err, row) {
 			query.finalize();
 			callback(err, row);

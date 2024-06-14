@@ -33,6 +33,7 @@ exec("node init-db.js", (error, stdout, stderr) => {
 
 const privateKey = ServerCrypto.getPrivateKey();
 const publicKey = ServerCrypto.getPublicKey();
+
 server.listen(port, () => {
 	console.log("Server listening on port %d", port);
 });
@@ -278,8 +279,7 @@ io.on("connection", (socket) => {
 			if (!req.message?.content)
 				callback({ success: false, reason: "No message supplied" });
 			const room = new Rooms(database);
-			console.log("send-message", req.message);
-			if (!req.message?.decryptionKeys)
+			if (!req?.decryptionKeys)
 				req.message.content = ServerCrypto.decryptWithPrivateKey(
 					privateKey,
 					req.message.content
@@ -334,7 +334,24 @@ io.on("connection", (socket) => {
 			const rooms = new Rooms(database);
 			rooms.getRoom(data.room, decodedToken.ID, (err, room) => {
 				if (err || !room) callback({ success: false, reason: "Invalid room" });
-				else callback({ success: true, room: room });
+				if (room.history.length > 0 && !room.history[0].decryptionKey) {
+					const user = new User(decodedToken.ID, database);
+					user.getUser((err, user) => {
+						room.history = room.history.map((message) => {
+							const aesKey = ServerCrypto.generateAesKey();
+							message.content = ServerCrypto.encryptMessage(
+								message.content,
+								aesKey
+							);
+							message.decryptionKey = ServerCrypto.encryptAesKey(
+								aesKey,
+								user.publicKey
+							);
+							return message;
+						});
+						callback({ success: true, room: room });
+					});
+				} else callback({ success: true, room: room });
 			});
 		});
 	});

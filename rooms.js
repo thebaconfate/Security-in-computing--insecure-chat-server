@@ -8,11 +8,7 @@ class Rooms {
 	}
 
 	getRoom(roomID, userID, callback) {
-		this.#database.getRoom(roomID, userID, (err, room) => {
-			if (err || !room) callback(err, null);
-			console.log(room.history[0].decryptionKey);
-			callback(err, room);
-		});
+		this.#database.getRoom(roomID, userID, callback);
 	}
 
 	sendMessage(roomID, userID, message, callback) {
