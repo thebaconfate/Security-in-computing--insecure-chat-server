@@ -1,6 +1,7 @@
 # Insecure Chat Server
 
-A simple insecure chat server
+This is the server side of the Insecure Chat project that is mandatory for the Security in Computing course at the VUB.
+The course was taken during 2023-2024.
 
 ## How to use
 
